@@ -1,50 +1,42 @@
-name: update Playlist
+name: Build IPTV Playlist
 
 on:
   workflow_dispatch:
   schedule:
     - cron: "0 */6 * * *"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - run: pip install pandas requests openpyxl
-
-      - name: Build playlist
+      - name: Install dependencies
         run: |
-          python <<'PY'
-          import pandas as pd
+          python -m pip install --upgrade pip
+          pip install pandas requests
 
-          df = pd.read_csv("playlist.csv").fillna("")
+      - name: Build Playlist
+        run: |
+          python scripts/build.py
 
-          required = ["Name","URL"]
-          for c in required:
-              if c not in df.columns:
-                  raise Exception(f"Missing column: {c}")
+      - name: Commit playlist
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
 
-          for c in ["Logo","Group","EPG_ID","Country","Language"]:
-              if c not in df.columns:
-                  df[c]=""
+          git add playlist.m3u playlist.json
 
-          out=["#EXTM3U"]
-          for _,r in df.iterrows():
-              out.append(
-                  f'#EXTINF:-1 tvg-id="{r.EPG_ID}" tvg-logo="{r.Logo}" '
-                  f'group-title="{r.Group}",{r.Name}'
-              )
-              out.append(str(r.URL))
+          git diff --cached --quiet || git commit -m "Auto update playlist"
 
-          open("playlist.m3u","w",encoding="utf-8").write("\n".join(out))
-          PY
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: playlist
-          path: playlist.m3u
+          git push
