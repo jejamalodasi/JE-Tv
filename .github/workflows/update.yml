@@ -1,0 +1,43 @@
+name: Build IPTV Playlist
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Sheet
+        run: |
+          curl -L "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKvgLEkW-YX8pMUEWwZcCGqwfbX5ZuGrDAZ7xTs4oiOZY8Im0DMDXo1ahLnQE4NQ/pub?gid=342955480&single=true&output=csv" -o channels.csv
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python Packages
+        run: |
+          pip install pandas
+
+      - name: Build Playlist
+        run: |
+          python scripts/build.py
+
+      - name: Commit Files
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          git add channels.csv playlist.m3u playlist.json
+
+          git diff --cached --quiet || git commit -m "Auto Update Playlist"
+
+          git push
