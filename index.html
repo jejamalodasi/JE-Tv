@@ -1,27 +1,94 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width,initial-scale=1">
+
 <title>JE TV</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <link rel="stylesheet" href="style.css">
+
+<link rel="manifest" href="manifest.json">
+
 </head>
 
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-<script src="app.js"></script>
 <body>
 
-<h1>📺 JE TV</h1>
-  <input
+<header>
+
+<div class="logo">
+
+📺 JE TV
+
+</div>
+
+<input
 id="search"
 type="text"
-placeholder="Search Channel..."
-style="width:95%;padding:12px;font-size:18px;border-radius:10px;margin:10px;">
+placeholder="Search Channel...">
 
-<video id="player" controls autoplay></video>
+</header>
 
-<h2>Live Channels</h2>
+<section id="banner">
 
-<div id="channels"></div>
+Loading Banner...
+
+</section>
+
+<nav id="categories">
+
+<button class="active">All</button>
+
+</nav>
+
+<main>
+
+<div id="channels">
+
+Loading Channels...
+
+</div>
+
+</main>
+
+<div id="playerModal" class="hide">
+
+<div class="playerHeader">
+
+<span id="playerTitle">
+
+JE TV
+
+</span>
+
+<button id="closePlayer">
+
+✕
+
+</button>
+
+</div>
+
+<video
+id="player"
+controls
+playsinline
+autoplay>
+
+</video>
+
+</div>
+
+<div id="loading">
+
+Loading...
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <script src="app.js"></script>
 
