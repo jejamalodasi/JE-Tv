@@ -1,37 +1,40 @@
-const api =
-"https://je-tv.vercel.app/api/playlist";
-
+const api = "https://je-tv.vercel.app/api/playlist";
 
 fetch(api)
-.then(res=>res.json())
-.then(data=>{
+.then(res => res.json())
+.then(data => {
 
+const channels = data.channels;
 
-let box=document.getElementById("channels");
+const box = document.getElementById("channels");
 
+channels.forEach(ch => {
 
-data.forEach(ch=>{
+let div = document.createElement("div");
 
+div.className = "channel";
 
-let div=document.createElement("div");
+div.innerHTML = `
+<img src="${ch.Logo}" width="60"><br>
+<b>${ch.Name}</b>
+`;
 
-div.className="channel";
+div.onclick = () => {
 
-div.innerHTML=ch.Name || ch.name;
+const player = document.getElementById("player");
 
-
-div.onclick=()=>{
-
-document.getElementById("player").src =
-ch.URL || ch.url;
+player.src = ch.URL;
+player.play();
 
 };
 
-
 box.appendChild(div);
-
 
 });
 
+})
+.catch(err => {
+
+console.log(err);
 
 });
