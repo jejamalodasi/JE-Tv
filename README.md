@@ -14,3 +14,5 @@ Recommended next upgrades:
 3. Dead-link checking
 4. Auto EPG mapping
 5. Channel sorting by group
+
+M3U Link : https://raw.githubusercontent.com/jejamalodasi/JE-Tv/refs/heads/main/playlist.m3u
