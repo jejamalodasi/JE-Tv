@@ -2,6 +2,8 @@ name: Build IPTV Playlist
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
 
 permissions:
   contents: write
@@ -11,12 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Download Sheet
-        run: |
-          curl -L "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKvgLEkW-YX8pMUEWwZcCGqwfbX5ZuGrDAZ7xTs4oiOZY8Im0DMDXo1ahLnQE4NQ/pub?gid=342955480&single=true&output=csv" -o channels.csv
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -25,19 +25,44 @@ jobs:
 
       - name: Install Python Packages
         run: |
-          pip install pandas
+          python -m pip install --upgrade pip
+          pip install pandas requests
+
+      - name: Download Google Sheets CSV
+        run: |
+          curl -L "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKvgLEkW-YX8pMUEWwZcCGqwfbX5ZuGrDAZ7xTs4oiOZY8Im0DMDXo1ahLnQE4NQ/pub?gid=342955480&single=true&output=csv" -o channels.csv
+
+      - name: Verify CSV
+        run: |
+          if [ ! -f channels.csv ]; then
+            echo "channels.csv not found!"
+            exit 1
+          fi
+
+          echo "CSV downloaded successfully"
+          head -5 channels.csv
 
       - name: Build Playlist
         run: |
           python scripts/build.py
 
-      - name: Commit Files
+      - name: Verify Output
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          ls -lh
+          head -5 playlist.m3u
+          test -f playlist.json
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add channels.csv playlist.m3u playlist.json
 
-          git diff --cached --quiet || git commit -m "Auto Update Playlist"
+          git diff --cached --quiet && echo "No changes" && exit 0
 
-          git push
+          git commit -m "Auto Update Playlist"
+
+          git pull --rebase origin main || true
+
+          git push origin HEAD:main
