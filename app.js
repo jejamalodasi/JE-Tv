@@ -1,77 +1,94 @@
-// ======================================
-// JE TV v3.0
-// app.js PART 1
-// ======================================
+/* =====================================
+   JE TV v3.0 FINAL APP.JS
+===================================== */
 
 
 const API = {
-  playlist: "/api/playlist",
-  banner: "/api/banner",
-  premium: "/api/premium",
-  notice: "/api/notice",
-  version: "/api/version"
+
+playlist:"/api/playlist",
+banner:"/api/banner",
+premium:"/api/premium",
+notice:"/api/notice",
+version:"/api/version"
+
 };
 
 
+
 let channels = [];
+
 let premiumChannels = [];
-let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+
+let favorites =
+JSON.parse(localStorage.getItem("favorites")) || [];
+
+let recent =
+JSON.parse(localStorage.getItem("recent")) || [];
 
 
-// Elements
 
-const channelBox = document.getElementById("channels");
-const searchBox = document.getElementById("search");
-const bannerBox = document.getElementById("banner");
+const channelBox =
+document.getElementById("channels");
+
+const bannerBox =
+document.getElementById("banner");
+
+const search =
+document.getElementById("search");
+
+const categories =
+document.getElementById("categories");
 
 
-// ================================
-// LOAD PLAYLIST
-// ================================
+
+/* ==========================
+ LOAD PLAYLIST
+========================== */
+
 
 async function loadPlaylist(){
 
 try{
 
-const res = await fetch(API.playlist);
 
-const data = await res.json();
-
-console.log(data);
+let res =
+await fetch(API.playlist);
 
 
-channels = data.channels || [];
+let data =
+await res.json();
 
 
-if(!channels.length){
 
-channelBox.innerHTML =
-"Channel Not Found";
+channels =
+data.channels || [];
 
-return;
-
-}
 
 
 showChannels(channels);
 
+createCategories();
 
-}catch(err){
 
-console.log(err);
+
+}catch(e){
+
+console.log(e);
 
 channelBox.innerHTML =
 "Playlist Error";
 
 }
 
+
 }
 
 
 
-// ================================
-// SHOW CHANNELS
-// ================================
+
+/* ==========================
+ CHANNEL CARD
+========================== */
 
 
 function showChannels(list){
@@ -83,17 +100,17 @@ channelBox.innerHTML="";
 list.forEach(ch=>{
 
 
-let card=document.createElement("div");
+let div =
+document.createElement("div");
 
 
-card.className="channel";
+div.className="channel";
 
 
-card.innerHTML=`
+div.innerHTML=`
 
 <img src="${ch.Logo}"
-onerror="this.src='https://placehold.co/100x100'">
-
+onerror="this.src='https://placehold.co/100'">
 
 <h3>${ch.Name}</h3>
 
@@ -103,15 +120,20 @@ onerror="this.src='https://placehold.co/100x100'">
 
 
 
-card.onclick=()=>{
+div.onclick=()=>{
+
 
 playChannel(ch);
+
+
+addRecent(ch);
+
 
 };
 
 
 
-channelBox.appendChild(card);
+channelBox.appendChild(div);
 
 
 });
@@ -121,25 +143,25 @@ channelBox.appendChild(card);
 
 
 
-// ================================
-// SEARCH
-// ================================
+
+/* ==========================
+ SEARCH
+========================== */
 
 
-if(searchBox){
-
-searchBox.addEventListener("input",()=>{
+search.addEventListener("input",()=>{
 
 
-let text =
-searchBox.value.toLowerCase();
+let value =
+search.value.toLowerCase();
+
 
 
 let result =
-channels.filter(ch=>
+channels.filter(c=>
 
-ch.Name.toLowerCase()
-.includes(text)
+c.Name.toLowerCase()
+.includes(value)
 
 );
 
@@ -151,143 +173,18 @@ showChannels(result);
 });
 
 
-}
 
 
 
-// START
+/* ==========================
+ CATEGORY
+========================== */
 
-loadPlaylist();
 
-// ======================================
-// PLAYER SYSTEM
-// ======================================
+function createCategories(){
 
 
-const playerModal =
-document.getElementById("playerModal");
-
-const player =
-document.getElementById("player");
-
-const playerTitle =
-document.getElementById("playerTitle");
-
-const closePlayer =
-document.getElementById("closePlayer");
-
-let hls = null;
-
-
-function playChannel(ch){
-
-
-if(!playerModal) return;
-
-
-playerModal.classList.remove("hide");
-
-
-playerTitle.innerText =
-ch.Name;
-
-
-if(hls){
-
-hls.destroy();
-
-hls=null;
-
-}
-
-
-
-if(window.Hls && Hls.isSupported()){
-
-
-hls = new Hls();
-
-hls.loadSource(ch.URL);
-
-hls.attachMedia(player);
-
-
-}else{
-
-
-player.src = ch.URL;
-
-
-}
-
-
-player.play();
-
-
-}
-
-
-
-if(closePlayer){
-
-closePlayer.onclick=()=>{
-
-
-player.pause();
-
-
-if(hls){
-
-hls.destroy();
-
-hls=null;
-
-}
-
-
-playerModal.classList.add("hide");
-
-
-};
-
-}
-
-
-
-// ======================================
-// CATEGORY
-// ======================================
-
-
-const categoryBox =
-document.getElementById("categories");
-
-
-function loadCategories(){
-
-
-if(!categoryBox) return;
-
-
-categoryBox.innerHTML="";
-
-
-let all =
-document.createElement("button");
-
-
-all.innerText="All";
-
-
-all.onclick=()=>{
-
-showChannels(channels);
-
-};
-
-
-categoryBox.appendChild(all);
-
+categories.innerHTML="";
 
 
 let groups =
@@ -297,14 +194,14 @@ channels.map(c=>c.Group)
 
 
 
-groups.forEach(group=>{
+groups.forEach(g=>{
 
 
 let btn =
 document.createElement("button");
 
 
-btn.innerText=group;
+btn.innerText=g;
 
 
 btn.onclick=()=>{
@@ -313,7 +210,7 @@ btn.onclick=()=>{
 showChannels(
 
 channels.filter(
-c=>c.Group===group
+c=>c.Group==g
 )
 
 );
@@ -322,8 +219,7 @@ c=>c.Group===group
 };
 
 
-categoryBox.appendChild(btn);
-
+categories.appendChild(btn);
 
 
 });
@@ -333,13 +229,116 @@ categoryBox.appendChild(btn);
 
 
 
-loadCategories();
 
 
 
-// ======================================
-// BANNER
-// ======================================
+/* ==========================
+ PLAYER
+========================== */
+
+
+let hls;
+
+
+function playChannel(ch){
+
+
+let modal =
+document.getElementById("playerModal");
+
+
+let video =
+document.getElementById("player");
+
+
+let title =
+document.getElementById("playerTitle");
+
+
+
+modal.classList.remove("hide");
+
+
+title.innerText =
+ch.Name;
+
+
+
+if(hls){
+
+hls.destroy();
+
+}
+
+
+
+if(
+window.Hls &&
+Hls.isSupported()
+){
+
+
+hls =
+new Hls();
+
+
+hls.loadSource(ch.URL);
+
+
+hls.attachMedia(video);
+
+
+}else{
+
+
+video.src =
+ch.URL;
+
+
+}
+
+
+
+video.play();
+
+
+}
+
+
+
+
+document
+.getElementById("closePlayer")
+.onclick=()=>{
+
+
+let video =
+document.getElementById("player");
+
+
+video.pause();
+
+
+if(hls)
+hls.destroy();
+
+
+
+document
+.getElementById("playerModal")
+.classList.add("hide");
+
+
+};
+
+
+
+
+
+
+/* ==========================
+ BANNER
+========================== */
 
 
 async function loadBanner(){
@@ -356,53 +355,31 @@ let data =
 await res.json();
 
 
-if(data.banners &&
-data.banners.length){
+
+if(data.banners){
 
 
-bannerBox.innerHTML = `
-
+bannerBox.innerHTML =
+`
 <img src="${data.banners[0].Image}">
-
 `;
 
-
 }
 
 
-}catch(e){
-
-console.log(e);
-
-}
+}catch(e){}
 
 
 }
 
 
 
-loadBanner();
-
-// ======================================
-// PREMIUM SYSTEM
-// ======================================
 
 
-const premiumBtn =
-document.getElementById("premiumBtn");
 
-
-const premiumBox =
-document.getElementById("premiumBox");
-
-
-const passwordInput =
-document.getElementById("premiumPassword");
-
-
-const unlockBtn =
-document.getElementById("unlockPremium");
-
+/* ==========================
+ PREMIUM
+========================== */
 
 
 async function loadPremium(){
@@ -419,46 +396,49 @@ let data =
 await res.json();
 
 
+
 premiumChannels =
-data.premium || [];
+data.channels ||
+data.premium ||
+[];
 
 
-}catch(e){
 
-console.log(e);
+}catch(e){}
+
 
 }
 
 
-}
+
+document
+.getElementById("premiumBtn")
+.onclick=()=>{
 
 
+document
+.getElementById("premiumBox")
+.classList.remove("hide");
 
-if(premiumBtn){
-
-premiumBtn.onclick=()=>{
-
-premiumBox.classList.remove("hide");
 
 };
 
-}
 
 
 
-if(unlockBtn){
-
-unlockBtn.onclick=()=>{
+document
+.getElementById("unlockPremium")
+.onclick=()=>{
 
 
 let pass =
-passwordInput.value;
+document.getElementById("premiumPassword").value;
 
 
 
 let result =
 premiumChannels.filter(
-c=>c.Password===pass
+c=>c.Password==pass
 );
 
 
@@ -469,7 +449,9 @@ if(result.length){
 showChannels(result);
 
 
-premiumBox.classList.add("hide");
+document
+.getElementById("premiumBox")
+.classList.add("hide");
 
 
 }else{
@@ -481,18 +463,17 @@ alert("Wrong Password");
 }
 
 
-
 };
 
 
-}
 
 
 
 
-// ======================================
-// NOTICE
-// ======================================
+
+/* ==========================
+ NOTICE
+========================== */
 
 
 async function loadNotice(){
@@ -509,47 +490,45 @@ let data =
 await res.json();
 
 
-let n =
-data.notice?.[0];
+
+if(data.notice){
 
 
-if(n && n.Enable==="TRUE"){
-
-
-alert(
-n.Title+"\n\n"+n.Message
-);
+alert(data.notice);
 
 
 }
 
 
 
-}catch(e){
+}catch(e){}
 
-console.log(e);
+
 
 }
 
 
-}
 
 
 
-// ======================================
-// FAVORITES
-// ======================================
+/* ==========================
+ FAVORITE + RECENT
+========================== */
 
 
-function saveFavorite(ch){
+function addRecent(ch){
 
 
-favorites.push(ch);
+recent.unshift(ch);
+
+
+recent =
+recent.slice(0,20);
 
 
 localStorage.setItem(
-"favorites",
-JSON.stringify(favorites)
+"recent",
+JSON.stringify(recent)
 );
 
 
@@ -557,7 +536,14 @@ JSON.stringify(favorites)
 
 
 
-// START FINAL
+
+
+
+/* START */
+
+loadPlaylist();
+
+loadBanner();
 
 loadPremium();
 
