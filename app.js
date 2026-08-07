@@ -215,7 +215,8 @@ function playChannel(ch){
 
     playerTitle.innerText = ch.Name;
 
-    let url = ch.URL;
+    let url =
+"/api/stream?url=" + encodeURIComponent(ch.URL);
 
 
     if(window.currentHls){
