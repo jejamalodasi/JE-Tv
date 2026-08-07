@@ -208,33 +208,85 @@ function buildCategories(){
 // ========= PLAY CHANNEL =========
 
 function playChannel(ch){
-console.log("Playing:", ch.URL);
+
+    console.log("PLAY:", ch);
+
     playerModal.classList.remove("hide");
 
     playerTitle.innerText = ch.Name;
 
+    let url = ch.URL;
+
+
     if(window.currentHls){
+
         window.currentHls.destroy();
+
         window.currentHls = null;
+
     }
 
-    if(Hls.isSupported() && ch.URL && ch.URL.includes(".m3u8")){
 
-        const hls = new Hls();
+    player.pause();
+
+    player.src="";
+
+
+    if(Hls.isSupported()){
+
+
+        const hls = new Hls({
+
+            enableWorker:true,
+
+            lowLatencyMode:true
+
+        });
+
 
         window.currentHls = hls;
 
-        hls.loadSource(ch.URL);
+
+        hls.loadSource(url);
+
 
         hls.attachMedia(player);
 
-    }else{
 
-        player.src = ch.URL;
+        hls.on(Hls.Events.MANIFEST_PARSED,()=>{
+
+            player.play();
+
+        });
+
+
+        hls.on(Hls.Events.ERROR,(event,data)=>{
+
+            console.log("HLS ERROR",data);
+
+        });
+
 
     }
 
-    player.play().catch(err=>console.log(err));
+    else if(player.canPlayType('application/vnd.apple.mpegurl')){
+
+
+        player.src=url;
+
+        player.play();
+
+
+    }
+
+    else{
+
+
+        alert("HLS not supported");
+
+
+    }
+
 
 }
 
