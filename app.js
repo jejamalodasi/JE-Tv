@@ -1,5 +1,6 @@
 const premiumBtn =
 document.getElementById("premiumBtn");
+console.log(premiumBtn);
 
 const premiumBox =
 document.getElementById("premiumBox");
@@ -466,3 +467,21 @@ console.log("Premium Error",e);
 loadNotice();
 
 loadPremium();
+
+
+    document.addEventListener("DOMContentLoaded", function(){
+
+const btn = document.getElementById("premiumBtn");
+const box = document.getElementById("premiumBox");
+
+if(btn && box){
+
+btn.addEventListener("click", function(){
+
+box.classList.remove("hide");
+
+});
+
+}
+
+});
