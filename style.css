@@ -214,3 +214,33 @@ height:90%;
 background:black;
 
 }
+
+#premiumBox{
+position:fixed;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+background:#1a1a1a;
+padding:20px;
+border-radius:12px;
+width:90%;
+max-width:350px;
+z-index:9999;
+}
+
+#premiumBox input{
+width:100%;
+padding:10px;
+margin:10px 0;
+border-radius:8px;
+border:none;
+}
+
+#premiumBox button{
+width:100%;
+padding:10px;
+background:#e50914;
+color:white;
+border:none;
+border-radius:8px;
+}
