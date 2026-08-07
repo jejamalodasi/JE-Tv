@@ -1,16 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
 <meta charset="UTF-8">
-
-<meta name="viewport"
-content="width=device-width,initial-scale=1">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JE TV</title>
 
 <link rel="stylesheet" href="style.css">
-
 <link rel="manifest" href="manifest.json">
 
 </head>
@@ -19,11 +14,7 @@ content="width=device-width,initial-scale=1">
 
 <header>
 
-<div class="logo">
-
-📺 JE TV
-
-</div>
+<h1>📺 JE TV</h1>
 
 <input
 id="search"
@@ -38,21 +29,21 @@ Loading Banner...
 
 </section>
 
-<nav id="categories">
+<section id="categories">
 
-<button class="active">All</button>
+<button class="active">
 
-</nav>
+All
 
-<main>
+</button>
 
-<div id="channels">
+</section>
+
+<section id="channels">
 
 Loading Channels...
 
-</div>
-
-</main>
+</section>
 
 <div id="playerModal" class="hide">
 
@@ -73,18 +64,16 @@ JE TV
 </div>
 
 <video
+
 id="player"
+
 controls
+
 playsinline
+
 autoplay>
 
 </video>
-
-</div>
-
-<div id="loading">
-
-Loading...
 
 </div>
 
