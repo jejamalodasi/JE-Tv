@@ -57,7 +57,7 @@ data.channels || [];
 
 
 showChannels(channels);
-
+loadCategories();
 
 }catch(error){
 
