@@ -62,7 +62,69 @@ export default async function handler(req, res) {
 
         const body =
         await response.text();
+// Rewrite HLS playlist
 
+if(
+    contentType.includes("mpegurl") ||
+    target.includes(".m3u8")
+){
+
+    const base =
+    target.substring(
+        0,
+        target.lastIndexOf("/") + 1
+    );
+
+
+    const rewritten =
+    body
+    .split("\n")
+    .map(line=>{
+
+
+        line=line.trim();
+
+
+        if(
+            line &&
+            !line.startsWith("#")
+        ){
+
+            let segmentUrl =
+            line;
+
+
+            if(!line.startsWith("http")){
+
+                segmentUrl =
+                base + line;
+
+            }
+
+
+            return "/api/stream?url="
+            +
+            encodeURIComponent(segmentUrl);
+
+        }
+
+
+        return line;
+
+
+    })
+    .join("\n");
+
+
+    res.setHeader(
+        "Content-Type",
+        "application/vnd.apple.mpegurl"
+    );
+
+
+    return res.status(200).send(rewritten);
+
+}
 
         res.setHeader(
             "Content-Type",
