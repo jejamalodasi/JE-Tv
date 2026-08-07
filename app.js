@@ -274,7 +274,11 @@ function playChannel(ch){
 
         player.src=url;
 
-        player.play();
+        player.muted = true;
+
+player.play().catch(err=>{
+    console.log("Play blocked:",err);
+});
 
 
     }
