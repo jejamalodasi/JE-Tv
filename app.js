@@ -1,3 +1,11 @@
+const BANNER_API =
+"https://je-tv.vercel.app/api/banner";
+
+const bannerBox =
+document.getElementById("banner");
+
+const categoryBox =
+document.getElementById("categories");
 const API =
 "https://je-tv.vercel.app/api/playlist";
 
@@ -217,5 +225,105 @@ playerModal.classList.add("hide");
 
 
 
+async function loadBanner(){
 
+try{
+
+const res =
+await fetch(BANNER_API);
+
+const data =
+await res.json();
+
+
+if(data.success){
+
+bannerBox.innerHTML="";
+
+
+data.banners.forEach(item=>{
+
+
+let img =
+document.createElement("img");
+
+
+img.src =
+item.Image;
+
+
+img.onclick=()=>{
+
+if(item.Link){
+
+window.open(item.Link,"_blank");
+
+}
+
+};
+
+
+bannerBox.appendChild(img);
+
+
+});
+
+
+}
+
+
+}catch(e){
+
+console.log("Banner Error",e);
+
+}
+
+}
+
+
+function loadCategories(){
+
+
+let groups =
+[
+...new Set(
+channels.map(ch=>ch.Group)
+)
+];
+
+
+groups.forEach(group=>{
+
+
+let btn =
+document.createElement("button");
+
+
+btn.innerText =
+group;
+
+
+btn.onclick=()=>{
+
+
+let filtered =
+channels.filter(
+ch=>ch.Group===group
+);
+
+
+showChannels(filtered);
+
+
+};
+
+
+categoryBox.appendChild(btn);
+
+
+});
+
+
+}
 loadChannels();
+loadBanner();
