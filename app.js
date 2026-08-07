@@ -154,17 +154,31 @@ ch.URL.includes(".m3u8")
 ){
 
 
-let hls =
-new Hls();
+let hls = new Hls({
+
+    liveSyncDurationCount: 2,
+
+    maxBufferLength: 5,
+
+    maxMaxBufferLength: 10,
+
+    enableWorker: true,
+
+    lowLatencyMode: true
+
+});
 
 
 hls.loadSource(ch.URL);
 
-
 hls.attachMedia(player);
 
 
-}
+hls.on(Hls.Events.MANIFEST_PARSED, function(){
+
+    player.play();
+
+});
 
 else{
 
