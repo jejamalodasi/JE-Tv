@@ -1,67 +1,63 @@
 export default async function handler(req,res){
 
-const password=req.query.password;
-
-
-const csvUrl=
+const url =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKvgLEkW-YX8pMUEWwZcCGqwfbX5ZuGrDAZ7xTs4oiOZY8Im0DMDXo1ahLnQE4NQ/pub?gid=1507668387&single=true&output=csv";
 
 
 try{
 
-const response=await fetch(csvUrl);
+const response = await fetch(url);
 
-const csv=await response.text();
-
-const rows=csv.trim().split("\n");
-
-const headers=rows[0].split(",");
+const csv = await response.text();
 
 
-const channels=rows.slice(1).map(row=>{
+const rows =
+csv.split("\n").slice(1);
 
-const values=row.split(",");
 
-let obj={};
+const premium =
+rows.map(row=>{
 
-headers.forEach((h,i)=>{
-obj[h.trim()]=values[i]?.trim() || "";
+let data=row.split(",");
+
+
+return {
+
+Name:data[0],
+
+Group:data[1],
+
+Logo:data[2],
+
+URL:data[3],
+
+Password:data[4]
+
+};
+
+
 });
 
-return obj;
-
-});
-
-
-const access=channels.filter(
-item=>item.Password===password
-);
-
-
-res.setHeader("Access-Control-Allow-Origin","*");
-
-
-if(access.length){
 
 res.status(200).json({
+
 success:true,
-channels:access
+
+premium
+
 });
 
-}else{
-
-res.status(401).json({
-success:false,
-message:"Wrong Password"
-});
 
 }
 
-
-}catch(e){
+catch(e){
 
 res.status(500).json({
+
+success:false,
+
 error:e.message
+
 });
 
 }
