@@ -243,3 +243,98 @@ cursor:pointer;
 #closePremium{
 background:#444;
 }
+
+/* ===========================
+   Notice Popup
+=========================== */
+
+#noticePopup{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.75);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:10000;
+}
+
+.noticeCard{
+background:#1b1b1b;
+width:90%;
+max-width:380px;
+padding:20px;
+border-radius:16px;
+text-align:center;
+}
+
+.noticeCard h2{
+margin-bottom:15px;
+font-size:22px;
+}
+
+.noticeCard p{
+margin-bottom:20px;
+line-height:1.6;
+color:#ddd;
+}
+
+#closeNotice{
+background:#e50914;
+color:#fff;
+border:none;
+padding:12px 20px;
+border-radius:10px;
+cursor:pointer;
+}
+
+/* Loading */
+
+#loading{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:#000;
+display:flex;
+justify-content:center;
+align-items:center;
+font-size:22px;
+font-weight:bold;
+z-index:10001;
+}
+
+/* Animation */
+
+.channel,
+#categories button,
+.premiumCard,
+.noticeCard{
+transition:all .3s ease;
+}
+
+/* Mobile */
+
+@media(max-width:600px){
+
+header h1{
+font-size:22px;
+}
+
+#banner{
+height:150px;
+}
+
+#channels{
+grid-template-columns:repeat(2,1fr);
+}
+
+.channel img{
+width:70px;
+height:70px;
+}
+
+   }
