@@ -1,5 +1,11 @@
 // ========= API =========
 
+const PREMIUM_API =
+"https://je-tv.vercel.app/api/premium";
+
+const NOTICE_API =
+"https://je-tv.vercel.app/api/notice";
+
 const API = {
   playlist: "/api/playlist",
   banner: "/api/banner",
@@ -337,3 +343,75 @@ searchBox.addEventListener("input",()=>{
     renderChannels(result);
 
 });
+
+// Notice Load
+
+async function loadNotice(){
+
+try{
+
+const res =
+await fetch(NOTICE_API);
+
+const data =
+await res.json();
+
+
+if(data.success){
+
+let n =
+data.notice[0];
+
+
+if(n && n.Enable.toLowerCase()=="true"){
+
+alert(
+n.Title + "\n\n" + n.Message
+);
+
+}
+
+}
+
+
+}catch(e){
+
+console.log("Notice Error",e);
+
+}
+
+}
+
+
+
+// Premium Check
+
+async function loadPremium(){
+
+try{
+
+const res =
+await fetch(PREMIUM_API);
+
+const data =
+await res.json();
+
+
+console.log(
+"Premium Channels:",
+data.premium
+);
+
+
+}catch(e){
+
+console.log("Premium Error",e);
+
+}
+
+}
+
+
+loadNotice();
+
+loadPremium();
