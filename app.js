@@ -109,7 +109,10 @@ function renderChannels(list){
             <h3>${ch.Name}</h3>
         `;
 
-        card.onclick=()=>playChannel(ch);
+        card.onclick=()=>{
+    console.log(ch);
+    playChannel(ch);
+};
 
         channelsBox.appendChild(card);
 
@@ -205,7 +208,7 @@ function buildCategories(){
 // ========= PLAY CHANNEL =========
 
 function playChannel(ch){
-
+console.log("Playing:", ch.URL);
     playerModal.classList.remove("hide");
 
     playerTitle.innerText = ch.Name;
