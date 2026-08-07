@@ -1,5 +1,20 @@
 // ========= API =========
 
+const premiumBtn =
+document.getElementById("premiumBtn");
+
+const premiumBox =
+document.getElementById("premiumBox");
+
+const unlockPremium =
+document.getElementById("unlockPremium");
+
+const premiumPassword =
+document.getElementById("premiumPassword");
+
+
+let premiumChannels = [];
+
 const PREMIUM_API =
 "https://je-tv.vercel.app/api/premium";
 
@@ -402,6 +417,42 @@ console.log(
 data.premium
 );
 
+  premiumChannels =
+data.premium;
+
+  premiumBtn.onclick=()=>{
+
+premiumBox.classList.remove("hide");
+
+};
+
+
+unlockPremium.onclick=()=>{
+
+
+let pass =
+premiumPassword.value;
+
+
+let result =
+premiumChannels.filter(
+ch=>ch.Password===pass
+);
+
+
+if(result.length){
+
+showChannels(result);
+
+premiumBox.classList.add("hide");
+
+}else{
+
+alert("Wrong Password");
+
+}
+
+};
 
 }catch(e){
 
