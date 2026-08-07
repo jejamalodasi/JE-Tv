@@ -161,3 +161,138 @@ channelsBox.appendChild(card);
 
 
 }
+
+// =================================
+// SEARCH
+// =================================
+
+searchBox.addEventListener("input", () => {
+
+  const keyword = searchBox.value.toLowerCase().trim();
+
+  if (keyword === "") {
+    showChannels(allChannels);
+    return;
+  }
+
+  const result = allChannels.filter(ch =>
+    (ch.Name || "").toLowerCase().includes(keyword)
+  );
+
+  showChannels(result);
+
+});
+
+
+// =================================
+// CATEGORIES
+// =================================
+
+function createCategories() {
+
+  categoryBox.innerHTML = "";
+
+  const allBtn = document.createElement("button");
+  allBtn.textContent = "All";
+  allBtn.className = "active";
+
+  allBtn.onclick = () => {
+    showChannels(allChannels);
+  };
+
+  categoryBox.appendChild(allBtn);
+
+  const groups = [...new Set(
+    allChannels.map(ch => ch.Group).filter(Boolean)
+  )];
+
+  groups.forEach(group => {
+
+    const btn = document.createElement("button");
+
+    btn.textContent = group;
+
+    btn.onclick = () => {
+
+      document
+        .querySelectorAll("#categories button")
+        .forEach(b => b.classList.remove("active"));
+
+      btn.classList.add("active");
+
+      showChannels(
+        allChannels.filter(ch => ch.Group === group)
+      );
+
+    };
+
+    categoryBox.appendChild(btn);
+
+  });
+
+}
+
+
+// =================================
+// PLAYER
+// =================================
+
+let hls = null;
+
+function playChannel(channel){
+
+  playerModal.classList.remove("hide");
+
+  playerTitle.textContent = channel.Name;
+
+  if(hls){
+    hls.destroy();
+    hls = null;
+  }
+
+  if(
+    Hls.isSupported() &&
+    channel.URL &&
+    channel.URL.includes(".m3u8")
+  ){
+
+    hls = new Hls();
+
+    hls.loadSource(channel.URL);
+
+    hls.attachMedia(player);
+
+  }else{
+
+    player.src = channel.URL;
+
+  }
+
+  player.play();
+
+}
+
+
+// =================================
+// CLOSE PLAYER
+// =================================
+
+closePlayer.onclick = ()=>{
+
+  if(hls){
+
+    hls.destroy();
+
+    hls = null;
+
+  }
+
+  player.pause();
+
+  player.removeAttribute("src");
+
+  player.load();
+
+  playerModal.classList.add("hide");
+
+};
