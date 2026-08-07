@@ -84,3 +84,121 @@ async function loadBanner(){
     }
 
 }
+// ========= RENDER CHANNELS =========
+
+function renderChannels(list){
+
+    channelsBox.innerHTML="";
+
+    if(list.length===0){
+
+        channelsBox.innerHTML="<h2>No Channels Found</h2>";
+
+        return;
+
+    }
+
+    list.forEach(ch=>{
+
+        const card=document.createElement("div");
+
+        card.className="channel";
+
+        card.innerHTML=`
+            <img src="${ch.Logo}" onerror="this.src='https://placehold.co/100x100?text=TV'">
+            <h3>${ch.Name}</h3>
+        `;
+
+        card.onclick=()=>playChannel(ch);
+
+        channelsBox.appendChild(card);
+
+    });
+
+}
+
+// ========= RENDER BANNER =========
+
+function renderBanner(){
+
+    if(banners.length===0){
+
+        bannerBox.innerHTML="No Banner";
+
+        return;
+
+    }
+
+    let index=0;
+
+    bannerBox.innerHTML=`
+        <img id="bannerImage"
+        src="${banners[0].Image}"
+        style="width:100%;height:100%;object-fit:cover;">
+    `;
+
+    setInterval(()=>{
+
+        index++;
+
+        if(index>=banners.length){
+
+            index=0;
+
+        }
+
+        document.getElementById("bannerImage").src=banners[index].Image;
+
+    },5000);
+
+}
+
+// ========= CATEGORY =========
+
+function buildCategories(){
+
+    categoryBox.innerHTML="";
+
+    const groups=["All",...new Set(channels.map(c=>c.Group))];
+
+    groups.forEach(group=>{
+
+        const btn=document.createElement("button");
+
+        btn.innerText=group;
+
+        if(group==="All"){
+
+            btn.classList.add("active");
+
+        }
+
+        btn.onclick=()=>{
+
+            currentCategory=group;
+
+            document.querySelectorAll("#categories button").forEach(b=>b.classList.remove("active"));
+
+            btn.classList.add("active");
+
+            if(group==="All"){
+
+                renderChannels(channels);
+
+            }else{
+
+                renderChannels(
+
+                    channels.filter(c=>c.Group===group)
+
+                );
+
+            }
+
+        };
+
+        categoryBox.appendChild(btn);
+
+    });
+
+    }
