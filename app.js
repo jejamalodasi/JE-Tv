@@ -236,13 +236,21 @@ function playChannel(ch){
     if(Hls.isSupported()){
 
 
-        const hls = new Hls({
+ const hls = new Hls({
 
-            enableWorker:true,
+    enableWorker:true,
 
-            lowLatencyMode:true
+    lowLatencyMode:true,
 
-        });
+    capLevelToPlayerSize:true,
+
+    maxBufferLength:20,
+
+    maxMaxBufferLength:40,
+
+    startLevel:0
+
+});
 
 
         window.currentHls = hls;
