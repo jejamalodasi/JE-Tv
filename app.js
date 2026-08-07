@@ -202,3 +202,70 @@ function buildCategories(){
     });
 
     }
+// ========= PLAY CHANNEL =========
+
+function playChannel(ch){
+
+    playerModal.classList.remove("hide");
+
+    playerTitle.innerText = ch.Name;
+
+    if(window.currentHls){
+        window.currentHls.destroy();
+        window.currentHls = null;
+    }
+
+    if(Hls.isSupported() && ch.URL && ch.URL.includes(".m3u8")){
+
+        const hls = new Hls();
+
+        window.currentHls = hls;
+
+        hls.loadSource(ch.URL);
+
+        hls.attachMedia(player);
+
+    }else{
+
+        player.src = ch.URL;
+
+    }
+
+    player.play().catch(err=>console.log(err));
+
+}
+
+// ========= CLOSE PLAYER =========
+
+closePlayer.onclick = ()=>{
+
+    player.pause();
+
+    player.removeAttribute("src");
+
+    player.load();
+
+    if(window.currentHls){
+        window.currentHls.destroy();
+        window.currentHls = null;
+    }
+
+    playerModal.classList.add("hide");
+
+};
+
+// ========= SEARCH =========
+
+searchBox.addEventListener("input",()=>{
+
+    const keyword = searchBox.value.toLowerCase();
+
+    const result = channels.filter(c=>{
+
+        return (c.Name || "").toLowerCase().includes(keyword);
+
+    });
+
+    renderChannels(result);
+
+});
