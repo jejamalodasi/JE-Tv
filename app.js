@@ -1,5 +1,3 @@
-// ========= API =========
-
 const premiumBtn =
 document.getElementById("premiumBtn");
 
@@ -14,6 +12,8 @@ document.getElementById("premiumPassword");
 
 
 let premiumChannels = [];
+
+// ========= API =========
 
 const PREMIUM_API =
 "https://je-tv.vercel.app/api/premium";
