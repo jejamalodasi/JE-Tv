@@ -1,550 +1,166 @@
-/* =====================================
-   JE TV v3.0 FINAL APP.JS
-===================================== */
-
-
 const API = {
-
-playlist:"/api/playlist",
-banner:"/api/banner",
-premium:"/api/premium",
-notice:"/api/notice",
-version:"/api/version"
-
+  playlist: "/api/playlist",
+  config: "/api/config",
+  search: "/api/search",
 };
 
-
+const channelsBox = document.getElementById("channels");
+const categoryBox = document.getElementById("categories");
+const searchBox = document.getElementById("search");
+const playerModal = document.getElementById("playerModal");
+const player = document.getElementById("player");
+const playerTitle = document.getElementById("playerTitle");
+const closePlayer = document.getElementById("closePlayer");
 
 let channels = [];
+let currentCategory = "All";
+let currentHls = null;
+let refreshTimer = null;
 
-let premiumChannels = [];
-
-let favorites =
-JSON.parse(localStorage.getItem("favorites")) || [];
-
-let recent =
-JSON.parse(localStorage.getItem("recent")) || [];
-
-
-
-const channelBox =
-document.getElementById("channels");
-
-const bannerBox =
-document.getElementById("banner");
-
-const search =
-document.getElementById("search");
-
-const categories =
-document.getElementById("categories");
-
-
-
-/* ==========================
- LOAD PLAYLIST
-========================== */
-
-
-async function loadPlaylist(){
-
-try{
-
-
-let res =
-await fetch(API.playlist);
-
-
-let data =
-await res.json();
-
-
-
-channels =
-data.channels || [];
-
-
-
-showChannels(channels);
-
-createCategories();
-
-
-
-}catch(e){
-
-console.log(e);
-
-channelBox.innerHTML =
-"Playlist Error";
-
+function escapeHtml(value = "") {
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
 
-
+async function apiGet(url) {
+  const response = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`API ${response.status}`);
+  return response.json();
 }
 
+async function loadChannels({ initial = false } = {}) {
+  try {
+    const data = await apiGet(API.playlist);
+    const next = data.channels || [];
+    const oldIds = new Set(channels.map(c => `${c.id}|${c.URL}`));
+    const newIds = new Set(next.map(c => `${c.id}|${c.URL}`));
 
+    channels = next;
+    buildCategories();
+    applyView();
 
+    // A small visual indication that the app is reading the live Sheet.
+    document.title = `JE TV • ${channels.length} channels`;
 
-/* ==========================
- CHANNEL CARD
-========================== */
-
-
-function showChannels(list){
-
-
-channelBox.innerHTML="";
-
-
-list.forEach(ch=>{
-
-
-let div =
-document.createElement("div");
-
-
-div.className="channel";
-
-
-div.innerHTML=`
-
-<img src="${ch.Logo}"
-onerror="this.src='https://placehold.co/100'">
-
-<h3>${ch.Name}</h3>
-
-<p>${ch.Group || ""}</p>
-
-`;
-
-
-
-div.onclick=()=>{
-
-
-playChannel(ch);
-
-
-addRecent(ch);
-
-
-};
-
-
-
-channelBox.appendChild(div);
-
-
-});
-
-
+    if (!initial && (oldIds.size !== newIds.size ||
+      [...oldIds].some(x => !newIds.has(x)))) {
+      console.info("JE TV: Google Sheet changes detected automatically.");
+    }
+  } catch (error) {
+    console.warn("Live Sheet refresh failed:", error);
+    if (initial) channelsBox.innerHTML = "<div class='state'>Unable to load live channels.</div>";
+  }
 }
 
+async function start() {
+  try {
+    const config = await apiGet(API.config);
+    const interval = Math.max(Number(config.refresh_interval_ms || 30000), 10000);
 
+    await loadChannels({ initial: true });
 
-
-/* ==========================
- SEARCH
-========================== */
-
-
-search.addEventListener("input",()=>{
-
-
-let value =
-search.value.toLowerCase();
-
-
-
-let result =
-channels.filter(c=>
-
-c.Name.toLowerCase()
-.includes(value)
-
-);
-
-
-
-showChannels(result);
-
-
-});
-
-
-
-
-
-/* ==========================
- CATEGORY
-========================== */
-
-
-function createCategories(){
-
-
-categories.innerHTML="";
-
-
-let groups =
-[...new Set(
-channels.map(c=>c.Group)
-)];
-
-
-
-groups.forEach(g=>{
-
-
-let btn =
-document.createElement("button");
-
-
-btn.innerText=g;
-
-
-btn.onclick=()=>{
-
-
-showChannels(
-
-channels.filter(
-c=>c.Group==g
-)
-
-);
-
-
-};
-
-
-categories.appendChild(btn);
-
-
-});
-
-
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(() => loadChannels(), interval);
+  } catch {
+    await loadChannels({ initial: true });
+    refreshTimer = setInterval(() => loadChannels(), 30000);
+  }
 }
 
+function buildCategories() {
+  const groups = ["All", ...new Set(channels.map(c => c.Group).filter(Boolean))];
+  categoryBox.innerHTML = "";
 
-
-
-
-
-/* ==========================
- PLAYER
-========================== */
-
-
-let hls;
-
-
-function playChannel(ch){
-
-
-let modal =
-document.getElementById("playerModal");
-
-
-let video =
-document.getElementById("player");
-
-
-let title =
-document.getElementById("playerTitle");
-
-
-
-modal.classList.remove("hide");
-
-
-title.innerText =
-ch.Name;
-
-
-
-if(hls){
-
-hls.destroy();
-
+  for (const group of groups) {
+    const button = document.createElement("button");
+    button.textContent = group;
+    button.classList.toggle("active", group === currentCategory);
+    button.onclick = () => {
+      currentCategory = group;
+      document.querySelectorAll("#categories button").forEach(b => b.classList.remove("active"));
+      button.classList.add("active");
+      applyView();
+    };
+    categoryBox.appendChild(button);
+  }
 }
 
+function applyView() {
+  const keyword = searchBox.value.trim().toLowerCase();
+  let list = currentCategory === "All"
+    ? channels
+    : channels.filter(c => c.Group === currentCategory);
 
+  if (keyword) {
+    list = list.filter(c =>
+      [c.Name, c.Group, c.Language, c.Country].filter(Boolean)
+        .some(v => String(v).toLowerCase().includes(keyword))
+    );
+  }
 
-if(
-window.Hls &&
-Hls.isSupported()
-){
-
-
-hls =
-new Hls();
-
-
-hls.loadSource(ch.URL);
-
-
-hls.attachMedia(video);
-
-
-}else{
-
-
-video.src =
-ch.URL;
-
-
+  renderChannels(list);
 }
 
+function renderChannels(list) {
+  channelsBox.innerHTML = "";
+  if (!list.length) {
+    channelsBox.innerHTML = "<div class='state'>No channels found.</div>";
+    return;
+  }
 
+  const fragment = document.createDocumentFragment();
 
-video.play();
+  for (const channel of list) {
+    const card = document.createElement("button");
+    card.className = "channel";
+    card.type = "button";
+    card.innerHTML = `
+      <img src="${escapeHtml(channel.Logo || "https://placehold.co/160x160?text=TV")}" alt="" loading="lazy">
+      <span>${escapeHtml(channel.Name)}</span>
+      <small>${escapeHtml(channel.Group)}</small>
+    `;
+    card.onclick = () => playChannel(channel);
+    fragment.appendChild(card);
+  }
 
-
+  channelsBox.appendChild(fragment);
 }
 
-
-
-
-document
-.getElementById("closePlayer")
-.onclick=()=>{
-
-
-let video =
-document.getElementById("player");
-
-
-video.pause();
-
-
-if(hls)
-hls.destroy();
-
-
-
-document
-.getElementById("playerModal")
-.classList.add("hide");
-
-
-};
-
-
-
-
-
-
-/* ==========================
- BANNER
-========================== */
-
-
-async function loadBanner(){
-
-
-try{
-
-
-let res =
-await fetch(API.banner);
-
-
-let data =
-await res.json();
-
-
-
-if(data.banners){
-
-
-bannerBox.innerHTML =
-`
-<img src="${data.banners[0].Image}">
-`;
-
+function stopPlayer() {
+  player.pause();
+  player.removeAttribute("src");
+  player.load();
+  if (currentHls) {
+    currentHls.destroy();
+    currentHls = null;
+  }
 }
 
+function playChannel(channel) {
+  stopPlayer();
+  playerModal.classList.remove("hide");
+  playerTitle.textContent = channel.Name;
+  const url = `/api/stream?url=${encodeURIComponent(channel.URL)}`;
 
-}catch(e){}
-
-
+  if (window.Hls?.isSupported()) {
+    currentHls = new Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 30 });
+    currentHls.loadSource(url);
+    currentHls.attachMedia(player);
+    currentHls.on(Hls.Events.MANIFEST_PARSED, () => player.play().catch(() => {}));
+  } else if (player.canPlayType("application/vnd.apple.mpegurl")) {
+    player.src = url;
+    player.play().catch(() => {});
+  }
 }
 
-
-
-
-
-
-/* ==========================
- PREMIUM
-========================== */
-
-
-async function loadPremium(){
-
-
-try{
-
-
-let res =
-await fetch(API.premium);
-
-
-let data =
-await res.json();
-
-
-
-premiumChannels =
-data.channels ||
-data.premium ||
-[];
-
-
-
-}catch(e){}
-
-
+function closePlayerModal() {
+  stopPlayer();
+  playerModal.classList.add("hide");
 }
 
-
-
-document
-.getElementById("premiumBtn")
-.onclick=()=>{
-
-
-document
-.getElementById("premiumBox")
-.classList.remove("hide");
-
-
-};
-
-
-
-
-document
-.getElementById("unlockPremium")
-.onclick=()=>{
-
-
-let pass =
-document.getElementById("premiumPassword").value;
-
-
-
-let result =
-premiumChannels.filter(
-c=>c.Password==pass
-);
-
-
-
-if(result.length){
-
-
-showChannels(result);
-
-
-document
-.getElementById("premiumBox")
-.classList.add("hide");
-
-
-}else{
-
-
-alert("Wrong Password");
-
-
-}
-
-
-};
-
-
-
-
-
-
-
-/* ==========================
- NOTICE
-========================== */
-
-
-async function loadNotice(){
-
-
-try{
-
-
-let res =
-await fetch(API.notice);
-
-
-let data =
-await res.json();
-
-
-
-if(data.notice){
-
-
-alert(data.notice);
-
-
-}
-
-
-
-}catch(e){}
-
-
-
-}
-
-
-
-
-
-/* ==========================
- FAVORITE + RECENT
-========================== */
-
-
-function addRecent(ch){
-
-
-recent.unshift(ch);
-
-
-recent =
-recent.slice(0,20);
-
-
-localStorage.setItem(
-"recent",
-JSON.stringify(recent)
-);
-
-
-}
-
-
-
-
-
-
-/* START */
-
-loadPlaylist();
-
-loadBanner();
-
-loadPremium();
-
-loadNotice();
+closePlayer.onclick = closePlayerModal;
+playerModal.onclick = e => { if (e.target === playerModal) closePlayerModal(); };
+document.onkeydown = e => { if (e.key === "Escape") closePlayerModal(); };
+searchBox.oninput = applyView;
+
+start();
