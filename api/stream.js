@@ -1,45 +1,94 @@
-export default async function handler(req,res){
+export default async function handler(req, res) {
 
-const url=req.query.url;
+    res.setHeader(
+        "Access-Control-Allow-Origin",
+        "*"
+    );
 
-
-if(!url){
-
-return res.status(400).send("Missing URL");
-
-}
-
-
-try{
+    res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET,OPTIONS"
+    );
 
 
-const response = await fetch(url);
+    if(req.method === "OPTIONS"){
+
+        return res.status(200).end();
+
+    }
 
 
-res.setHeader(
-"Content-Type",
-"application/vnd.apple.mpegurl"
-);
+    const target = req.query.url;
 
 
-res.setHeader(
-"Access-Control-Allow-Origin",
-"*"
-);
+    if(!target){
+
+        return res.status(400).json({
+
+            error:"Missing stream url"
+
+        });
+
+    }
 
 
-const data = await response.text();
+    try{
 
 
-res.send(data);
+        const response = await fetch(target,{
+
+            headers:{
+
+                "User-Agent":
+                "Mozilla/5.0"
+
+            }
+
+        });
 
 
-}catch(error){
+        if(!response.ok){
+
+            return res.status(response.status).send(
+                "Stream unavailable"
+            );
+
+        }
 
 
-res.status(500).send(error.message);
+        const contentType =
+        response.headers.get("content-type") || "";
 
 
-}
+        const body =
+        await response.text();
+
+
+        res.setHeader(
+            "Content-Type",
+            contentType.includes("mpegurl")
+            ?
+            "application/vnd.apple.mpegurl"
+            :
+            contentType
+        );
+
+
+        res.status(200).send(body);
+
+
+
+    }catch(error){
+
+
+        res.status(500).json({
+
+            error:error.message
+
+        });
+
+
+    }
+
 
 }
