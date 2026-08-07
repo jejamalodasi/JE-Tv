@@ -1,104 +1,207 @@
-const API = "https://je-tv.vercel.app/api";
+const API =
+"https://je-tv.vercel.app/api/playlist";
 
-const player = document.getElementById("player");
-const playerModal = document.getElementById("playerModal");
-const closePlayer = document.getElementById("closePlayer");
-const channelsBox = document.getElementById("channels");
-const loading = document.getElementById("loading");
 
-let allChannels = [];
+const channelsBox =
+document.getElementById("channels");
 
-function showLoading() {
-  loading.style.display = "block";
-}
 
-function hideLoading() {
-  loading.style.display = "none";
-}
+const search =
+document.getElementById("search");
 
-async function loadChannels() {
 
-  showLoading();
+const player =
+document.getElementById("player");
 
-  try {
 
-    const res = await fetch(API + "/playlist");
+const playerModal =
+document.getElementById("playerModal");
 
-    const json = await res.json();
 
-    allChannels = json.channels || [];
+const closePlayer =
+document.getElementById("closePlayer");
 
-    renderChannels(allChannels);
 
-  } catch (e) {
+const playerTitle =
+document.getElementById("playerTitle");
 
-    channelsBox.innerHTML =
-      "<h2>Playlist Load Failed</h2>";
 
-    console.log(e);
+let channels = [];
 
-  }
 
-  hideLoading();
+// Load Playlist
 
-}
+async function loadChannels(){
 
-function renderChannels(list) {
+try{
 
-  channelsBox.innerHTML = "";
 
-  list.forEach(ch => {
+let res =
+await fetch(API);
 
-    const card = document.createElement("div");
 
-    card.className = "channel";
+let data =
+await res.json();
 
-    card.innerHTML = `
-      <img src="${ch.Logo}" onerror="this.src='https://placehold.co/120x120?text=TV'">
-      <h3>${ch.Name}</h3>
-    `;
 
-    card.onclick = () => playChannel(ch);
+channels =
+data.channels || [];
 
-    channelsBox.appendChild(card);
 
-  });
+showChannels(channels);
+
+
+}catch(error){
+
+
+channelsBox.innerHTML =
+"Playlist Load Error";
+
+
+console.log(error);
+
 
 }
 
-function playChannel(ch) {
-
-  playerModal.classList.remove("hide");
-
-  document.getElementById("playerTitle").innerText =
-    ch.Name;
-
-  if (Hls.isSupported() && ch.URL.includes(".m3u8")) {
-
-    const hls = new Hls();
-
-    hls.loadSource(ch.URL);
-
-    hls.attachMedia(player);
-
-  } else {
-
-    player.src = ch.URL;
-
-  }
-
-  player.play();
 
 }
 
-closePlayer.onclick = () => {
 
-  player.pause();
 
-  player.src = "";
+// Show Channels
 
-  playerModal.classList.add("hide");
+function showChannels(list){
+
+
+channelsBox.innerHTML="";
+
+
+list.forEach(ch=>{
+
+
+let div =
+document.createElement("div");
+
+
+div.className="channel";
+
+
+div.innerHTML=`
+
+<img src="${ch.Logo}"
+onerror="this.src='https://placehold.co/100x100'">
+
+<h3>${ch.Name}</h3>
+
+`;
+
+
+div.onclick=()=>playChannel(ch);
+
+
+channelsBox.appendChild(div);
+
+
+});
+
+
+}
+
+
+
+// Search
+
+search.addEventListener("input",()=>{
+
+
+let text =
+search.value.toLowerCase();
+
+
+let result =
+channels.filter(ch=>
+
+ch.Name.toLowerCase()
+.includes(text)
+
+);
+
+
+showChannels(result);
+
+
+});
+
+
+
+
+// Play Channel
+
+function playChannel(ch){
+
+
+playerModal.classList.remove("hide");
+
+
+playerTitle.innerText =
+ch.Name;
+
+
+
+if(
+Hls.isSupported() &&
+ch.URL.includes(".m3u8")
+){
+
+
+let hls =
+new Hls();
+
+
+hls.loadSource(ch.URL);
+
+
+hls.attachMedia(player);
+
+
+}
+
+else{
+
+
+player.src =
+ch.URL;
+
+
+}
+
+
+
+player.play();
+
+
+}
+
+
+
+
+// Close Player
+
+closePlayer.onclick=()=>{
+
+
+player.pause();
+
+player.src="";
+
+
+playerModal.classList.add("hide");
+
 
 };
+
+
+
+
 
 loadChannels();
