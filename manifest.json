@@ -1,0 +1,9 @@
+{
+  "name": "JE TV",
+  "short_name": "JE TV",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#08090b",
+  "theme_color": "#08090b",
+  "icons": []
+}
