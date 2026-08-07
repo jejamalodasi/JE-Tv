@@ -1,184 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
-<meta charset="UTF-8">
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>JE TV</title>
-
-
-<link rel="stylesheet" href="style.css">
-
-
-<!-- HLS Player -->
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#08090b">
+  <meta name="description" content="JE TV - Live TV streaming platform">
+  <title>JE TV</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
 </head>
-
-
 <body>
-
-
-<header>
-
-<img src="assets/logo.png" class="logo">
-
-<h1>JE TV</h1>
-
-</header>
-
-
-
-<!-- Banner -->
-
-<section id="banner">
-
-<div class="loading">
-Loading Banner...
-</div>
-
-</section>
-
-
-
-
-<!-- Search -->
-
-<div class="search-area">
-
-<input 
-id="search"
-type="text"
-placeholder="Search Channel...">
-
-</div>
-
-
-
-
-<!-- Categories -->
-
-<div id="categories">
-
-</div>
-
-
-
-
-
-<!-- Channels -->
-
-<section id="channels">
-
-<div class="loading">
-Loading Channels...
-</div>
-
-</section>
-
-
-
-
-
-
-<!-- Premium -->
-
-<button id="premiumBtn">
-
-🔒 Premium
-
-</button>
-
-
-
-<div id="premiumBox" class="hide">
-
-
-<h3>
-Premium Access
-</h3>
-
-
-<input 
-id="premiumPassword"
-type="password"
-placeholder="Password">
-
-
-<button id="unlockPremium">
-
-Unlock
-
-</button>
-
-
-</div>
-
-
-
-
-
-
-
-
-<!-- Player -->
-
-<div id="playerModal" class="hide">
-
-
-<div class="player-box">
-
-
-<button id="closePlayer">
-
-✖
-
-</button>
-
-
-<h3 id="playerTitle">
-
-Channel
-
-</h3>
-
-
-<video 
-id="player"
-controls
-autoplay
-playsinline>
-
-</video>
-
-
-</div>
-
-
-</div>
-
-
-
-
-
-
-<!-- Notice -->
-
-<div id="notice">
-
-</div>
-
-
-
-
-
-<script src="app.js"></script>
-
-
+  <header>
+    <h1>📺 JE TV</h1>
+    <input id="search" type="search" placeholder="Search channel..." autocomplete="off">
+  </header>
+
+  <section id="banner" aria-label="Featured content">Loading...</section>
+  <nav id="categories" aria-label="Channel categories"></nav>
+  <main id="channels" aria-live="polite">
+    <div class="state">Loading channels...</div>
+  </main>
+
+  <div id="playerModal" class="hide" role="dialog" aria-modal="true" aria-label="Video player">
+    <div class="playerHeader">
+      <span id="playerTitle">JE TV</span>
+      <button id="closePlayer" type="button" aria-label="Close player">✕</button>
+    </div>
+    <video id="player" controls playsinline webkit-playsinline></video>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+  <script src="app.js"></script>
 </body>
-
 </html>
