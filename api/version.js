@@ -1,43 +1,25 @@
-export default async function handler(req,res){
+import { csvToObjects, handleOptions, sendError, setCommonHeaders } from "./_utils.js";
 
-const csvUrl=
-"https://docs.google.com/spreadsheets/d/e/2PACX-1vRKvgLEkW-YX8pMUEWwZcCGqwfbX5ZuGrDAZ7xTs4oiOZY8Im0DMDXo1ahLnQE4NQ/pub?gid=1135955112&single=true&output=csv";
+const CSV_URL =
+  process.env.VERSION_CSV_URL ||
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKvgLEkW-YX8pMUEWwZcCGqwfbX5ZuGrDAZ7xTs4oiOZY8Im0DMDXo1ahLnQE4NQ/pub?gid=1135955112&single=true&output=csv";
 
+export default async function handler(req, res) {
+  if (handleOptions(req, res)) return;
 
-try{
+  try {
+    const response = await fetch(CSV_URL);
+    if (!response.ok) throw new Error("Version source unavailable");
 
-const response=await fetch(csvUrl);
+    const data = csvToObjects(await response.text());
+    const version = data[0] || {};
 
-const csv=await response.text();
-
-const rows=csv.trim().split("\n");
-
-const headers=rows[0].split(",");
-
-let result={};
-
-
-const values=rows[1].split(",");
-
-
-headers.forEach((h,i)=>{
-
-result[h.trim()]=values[i]?.trim() || "";
-
-});
-
-
-res.setHeader("Access-Control-Allow-Origin","*");
-
-res.status(200).json(result);
-
-
-}catch(e){
-
-res.status(500).json({
-error:e.message
-});
-
-}
-
+    setCommonHeaders(res, { cache: "s-maxage=300, stale-while-revalidate=1800" });
+    return res.status(200).json({
+      success: true,
+      ...version,
+    });
+  } catch {
+    return sendError(res, 502, "Unable to load version information");
+  }
 }

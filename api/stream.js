@@ -1,166 +1,107 @@
-export default async function handler(req,res){
+import {
+  absoluteUrl,
+  getQuery,
+  handleOptions,
+  sendError,
+  setCommonHeaders,
+  validHttpUrl,
+} from "./_utils.js";
 
-res.setHeader(
-"Access-Control-Allow-Origin",
-"*"
-);
+const PLAYLIST_URL =
+  process.env.PLAYLIST_URL ||
+  "https://raw.githubusercontent.com/jejamalodasi/JE-Tv/main/playlist.json";
 
+async function getAllowedHosts() {
+  const response = await fetch(PLAYLIST_URL);
+  if (!response.ok) throw new Error("Playlist unavailable");
 
-const url=req.query.url;
+  const data = await response.json();
+  const channels = Array.isArray(data) ? data : (data.channels || []);
 
-
-if(!url){
-
-return res.status(400).send(
-"Missing URL"
-);
-
+  return new Set(
+    channels
+      .map((channel) => channel.URL)
+      .filter(validHttpUrl)
+      .map((url) => new URL(url).hostname)
+  );
 }
 
-
-try{
-
-
-const response = await fetch(url,{
-
-headers:{
-
-"User-Agent":
-"Mozilla/5.0"
-
+function proxyUrl(url) {
+  return `/api/stream?url=${encodeURIComponent(url)}`;
 }
 
-});
+function rewriteManifest(text, baseUrl) {
+  const lines = text.split(/\r?\n/);
 
+  return lines
+    .map((line) => {
+      // Rewrite URI="..." attributes used by EXT-X-KEY, EXT-X-MEDIA, etc.
+      line = line.replace(/URI="([^"]+)"/g, (match, uri) => {
+        const absolute = absoluteUrl(uri, baseUrl);
+        return absolute ? `URI="${proxyUrl(absolute)}"` : match;
+      });
 
-if(!response.ok){
+      // Rewrite media/segment lines.
+      if (line && !line.startsWith("#")) {
+        const absolute = absoluteUrl(line.trim(), baseUrl);
+        return absolute ? proxyUrl(absolute) : line;
+      }
 
-return res.status(response.status)
-.send("Stream Error");
-
+      return line;
+    })
+    .join("\n");
 }
 
+export default async function handler(req, res) {
+  if (handleOptions(req, res)) return;
 
-const type =
-response.headers.get("content-type") || "";
+  const rawUrl = getQuery(req, "url");
+  if (!validHttpUrl(rawUrl)) {
+    return sendError(res, 400, "A valid http/https stream URL is required");
+  }
 
+  try {
+    const target = new URL(rawUrl);
+    const allowedHosts = await getAllowedHosts();
 
-/*
- HLS Playlist
-*/
+    if (!allowedHosts.has(target.hostname)) {
+      return sendError(res, 403, "Stream host is not in the approved playlist");
+    }
 
-if(
-type.includes("mpegurl") ||
-url.includes(".m3u8")
-){
+    const response = await fetch(target.toString(), {
+      headers: {
+        "User-Agent": "JE-TV-Stream-Proxy/1.0",
+        Accept: "*/*",
+      },
+      redirect: "follow",
+    });
 
+    if (!response.ok) {
+      return sendError(res, 502, `Upstream stream returned ${response.status}`);
+    }
 
-let text =
-await response.text();
+    const contentType = response.headers.get("content-type") || "";
+    const isManifest =
+      contentType.includes("mpegurl") ||
+      target.pathname.endsWith(".m3u8");
 
+    setCommonHeaders(res, {
+      cache: isManifest ? "no-store" : "public, max-age=30",
+    });
 
-const base =
-url.substring(
-0,
-url.lastIndexOf("/") + 1
-);
+    res.setHeader(
+      "Content-Type",
+      isManifest ? "application/vnd.apple.mpegurl" : contentType || "application/octet-stream"
+    );
 
+    if (isManifest) {
+      const text = await response.text();
+      return res.status(200).send(rewriteManifest(text, response.url || target.toString()));
+    }
 
-
-text =
-text
-.split("\n")
-.map(line=>{
-
-
-line=line.trim();
-
-
-
-if(
-line &&
-!line.startsWith("#")
-){
-
-
-let link=line;
-
-
-if(!line.startsWith("http")){
-
-link=base+line;
-
-}
-
-
-
-return "/api/stream?url="
-+
-encodeURIComponent(link);
-
-
-}
-
-
-
-return line;
-
-
-
-})
-.join("\n");
-
-
-
-res.setHeader(
-"Content-Type",
-"application/vnd.apple.mpegurl"
-);
-
-
-
-return res.send(text);
-
-
-}
-
-
-
-/*
- Video Segment
-*/
-
-
-const buffer =
-Buffer.from(
-await response.arrayBuffer()
-);
-
-
-res.setHeader(
-"Content-Type",
-type ||
-"video/mp2t"
-);
-
-
-return res.send(buffer);
-
-
-
-}
-catch(e){
-
-
-return res.status(500)
-.json({
-
-error:e.message
-
-});
-
-
-}
-
-
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return res.status(200).send(buffer);
+  } catch (error) {
+    return sendError(res, 502, "Unable to proxy stream");
+  }
 }

@@ -1,22 +1,22 @@
+import { getLiveChannels, getSheetSourceInfo } from "./sheet.js";
+import { handleOptions, sendError, setCommonHeaders } from "./_utils.js";
+
 export default async function handler(req, res) {
-  const url =
-    "https://raw.githubusercontent.com/jejamalodasi/JE-Tv/main/playlist.json";
+  if (handleOptions(req, res)) return;
+  if (req.method !== "GET") return sendError(res, 405, "Method not allowed");
 
   try {
-    const response = await fetch(url);
-    const data = await response.json();
-
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate");
-
-    res.status(200).json({
+    const channels = await getLiveChannels();
+    setCommonHeaders(res, { cache: "no-store" });
+    res.setHeader("X-Data-Source", "google-sheets");
+    return res.status(200).json({
       success: true,
-      channels: data,
+      count: channels.length,
+      channels,
+      source: getSheetSourceInfo(),
+      synced_at: new Date().toISOString(),
     });
-  } catch (e) {
-    res.status(500).json({
-      success: false,
-      error: e.message,
-    });
+  } catch (error) {
+    return sendError(res, 502, "Unable to read Google Sheet");
   }
 }
