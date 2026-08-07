@@ -1,115 +1,151 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JE TV</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
+  <title>JE TV</title>
 
+  <meta name="theme-color" content="#111111">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<header>
+  <!-- Header -->
+  <header>
+    <h1>📺 JE TV</h1>
 
-<h1>📺 JE TV</h1>
+    <input
+      id="search"
+      type="text"
+      placeholder="Search Channel...">
+  </header>
 
-<input
-id="search"
-type="text"
-placeholder="Search Channel...">
+  <!-- Banner -->
+  <section id="banner">
+    Loading Banner...
+  </section>
 
-</header>
+  <!-- Categories -->
+  <section id="categories">
+    <button class="active">All</button>
 
-<section id="banner">
+    <button id="premiumBtn">
+      🔒 Premium
+    </button>
+  </section>
 
-Loading Banner...
+  <!-- Channels -->
+  <main>
 
-</section>
+    <section id="channels">
 
-<section id="categories">
+      Loading Channels...
 
-<button class="active">
+    </section>
 
-All
+  </main>
 
-</button>
-
-</section>
-
-  <button id="premiumBtn">
-🔒 Premium
-  </button>
-  
-<section id="channels">
-
-Loading Channels...
-
-</section>
-
-  <div id="premiumBox" class="hide">
-
-<h2>🔒 Premium Login</h2>
-
-<input
-id="premiumPassword"
-type="password"
-placeholder="Enter Password">
-
-<button id="unlockPremium">
-Unlock
-</button>
-
-  </div>
-  
-<div id="playerModal" class="hide">
-
-<div class="playerHeader">
-
-<span id="playerTitle">
-
-JE TV
-
-</span>
-
-<button id="closePlayer">
-
-✕
-
-</button>
-
-</div>
-
-<video
-id="player"
-controls
-playsinline
-webkit-playsinline
-muted>
-</video>
-
-</div>
+  <!-- Premium Login -->
 
   <div id="premiumBox" class="hide">
 
-<h2>Premium Login</h2>
+    <div class="premiumCard">
 
-<input 
-id="premiumPassword"
-type="password"
-placeholder="Enter Password">
+      <h2>🔒 Premium Login</h2>
 
-<button id="unlockPremium">
-Unlock
-</button>
+      <input
+        id="premiumPassword"
+        type="password"
+        placeholder="Enter Password">
+
+      <button id="unlockPremium">
+
+        Unlock
+
+      </button>
+
+      <button id="closePremium">
+
+        Cancel
+
+      </button>
+
+    </div>
 
   </div>
-  
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-<script src="app.js"></script>
+  <!-- Player -->
+
+  <div id="playerModal" class="hide">
+
+    <div class="playerHeader">
+
+      <span id="playerTitle">
+
+        JE TV
+
+      </span>
+
+      <button id="closePlayer">
+
+        ✕
+
+      </button>
+
+    </div>
+
+    <video
+      id="player"
+      controls
+      autoplay
+      playsinline>
+    </video>
+
+  </div>
+
+  <!-- Notice -->
+
+  <div id="noticePopup" class="hide">
+
+    <div class="noticeCard">
+
+      <h2 id="noticeTitle">
+
+        Notice
+
+      </h2>
+
+      <p id="noticeText"></p>
+
+      <button id="closeNotice">
+
+        OK
+
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- Loading -->
+
+  <div id="loading" class="hide">
+
+    Loading...
+
+  </div>
+
+  <!-- Libraries -->
+
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+  <!-- Main App -->
+
+  <script src="app.js"></script>
 
 </body>
 </html>
