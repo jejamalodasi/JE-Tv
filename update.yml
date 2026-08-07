@@ -1,0 +1,54 @@
+name: Build IPTV Playlist
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download channels CSV
+        run: |
+          set -e
+          curl --fail --location --silent --show-error \
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKvgLEkW-YX8pMUEWwZcCGqwfbX5ZuGrDAZ7xTs4oiOZY8Im0DMDXo1ahLnQE4NQ/pub?gid=342955480&single=true&output=csv" \
+            -o channels.csv
+          test -s channels.csv
+
+      - name: Build playlists
+        run: python scripts/build.py
+
+      - name: Validate generated files
+        run: |
+          test -s playlist.json
+          test -s playlist.m3u
+          python - <<'PY'
+          import json
+          with open("playlist.json", encoding="utf-8") as f:
+              data = json.load(f)
+          assert isinstance(data, list)
+          print(f"Validated {len(data)} channels")
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add channels.csv playlist.m3u playlist.json
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "chore: update IPTV playlist"
+          git push origin HEAD:main
