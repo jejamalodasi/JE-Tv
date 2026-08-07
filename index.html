@@ -1,151 +1,184 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>JE TV</title>
+<meta charset="UTF-8">
 
-  <meta name="theme-color" content="#111111">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">
+<title>JE TV</title>
+
+
+<link rel="stylesheet" href="style.css">
+
+
+<!-- HLS Player -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+
 </head>
+
 
 <body>
 
-  <!-- Header -->
-  <header>
-    <h1>📺 JE TV</h1>
 
-    <input
-      id="search"
-      type="text"
-      placeholder="Search Channel...">
-  </header>
+<header>
 
-  <!-- Banner -->
-  <section id="banner">
-    Loading Banner...
-  </section>
+<img src="assets/logo.png" class="logo">
 
-  <!-- Categories -->
-  <section id="categories">
-    <button class="active">All</button>
+<h1>JE TV</h1>
 
-    <button id="premiumBtn">
-      🔒 Premium
-    </button>
-  </section>
+</header>
 
-  <!-- Channels -->
-  <main>
 
-    <section id="channels">
 
-      Loading Channels...
+<!-- Banner -->
 
-    </section>
+<section id="banner">
 
-  </main>
+<div class="loading">
+Loading Banner...
+</div>
 
-  <!-- Premium Login -->
+</section>
 
-  <div id="premiumBox" class="hide">
 
-    <div class="premiumCard">
 
-      <h2>🔒 Premium Login</h2>
 
-      <input
-        id="premiumPassword"
-        type="password"
-        placeholder="Enter Password">
+<!-- Search -->
 
-      <button id="unlockPremium">
+<div class="search-area">
 
-        Unlock
+<input 
+id="search"
+type="text"
+placeholder="Search Channel...">
 
-      </button>
+</div>
 
-      <button id="closePremium">
 
-        Cancel
 
-      </button>
 
-    </div>
+<!-- Categories -->
 
-  </div>
+<div id="categories">
 
-  <!-- Player -->
+</div>
 
-  <div id="playerModal" class="hide">
 
-    <div class="playerHeader">
 
-      <span id="playerTitle">
 
-        JE TV
 
-      </span>
+<!-- Channels -->
 
-      <button id="closePlayer">
+<section id="channels">
 
-        ✕
+<div class="loading">
+Loading Channels...
+</div>
 
-      </button>
+</section>
 
-    </div>
 
-    <video
-      id="player"
-      controls
-      autoplay
-      playsinline>
-    </video>
 
-  </div>
 
-  <!-- Notice -->
 
-  <div id="noticePopup" class="hide">
 
-    <div class="noticeCard">
+<!-- Premium -->
 
-      <h2 id="noticeTitle">
+<button id="premiumBtn">
 
-        Notice
+🔒 Premium
 
-      </h2>
+</button>
 
-      <p id="noticeText"></p>
 
-      <button id="closeNotice">
 
-        OK
+<div id="premiumBox" class="hide">
 
-      </button>
 
-    </div>
+<h3>
+Premium Access
+</h3>
 
-  </div>
 
-  <!-- Loading -->
+<input 
+id="premiumPassword"
+type="password"
+placeholder="Password">
 
-  <div id="loading" class="hide">
 
-    Loading...
+<button id="unlockPremium">
 
-  </div>
+Unlock
 
-  <!-- Libraries -->
+</button>
 
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-  <!-- Main App -->
+</div>
 
-  <script src="app.js"></script>
+
+
+
+
+
+
+
+<!-- Player -->
+
+<div id="playerModal" class="hide">
+
+
+<div class="player-box">
+
+
+<button id="closePlayer">
+
+✖
+
+</button>
+
+
+<h3 id="playerTitle">
+
+Channel
+
+</h3>
+
+
+<video 
+id="player"
+controls
+autoplay
+playsinline>
+
+</video>
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+<!-- Notice -->
+
+<div id="notice">
+
+</div>
+
+
+
+
+
+<script src="app.js"></script>
+
 
 </body>
+
 </html>
