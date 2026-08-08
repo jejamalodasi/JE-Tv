@@ -1,31 +1,32 @@
-import { csvToObjects, handleOptions, sendError, setCommonHeaders } from "./_utils.js";
-
-const CSV_URL =
-  process.env.NOTICE_CSV_URL ||
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKvgLEkW-YX8pMUEWwZcCGqwfbX5ZuGrDAZ7xTs4oiOZY8Im0DMDXo1ahLnQE4NQ/pub?gid=1907649251&single=true&output=csv";
+import { getSheet, sendJSON } from "./sheet.js";
 
 export default async function handler(req, res) {
-  if (handleOptions(req, res)) return;
+
+  if (req.method !== "GET") {
+    return sendJSON(res, 405, {
+      success: false,
+      error: "Method not allowed"
+    });
+  }
 
   try {
-    const response = await fetch(CSV_URL, {
-      headers: { "User-Agent": "JE-TV-API/1.0" },
-    });
-    if (!response.ok) throw new Error(`CSV source returned ${response.status}`);
 
-    const csv = await response.text();
-    const data = csvToObjects(csv);
+    const data = await getSheet("notice");
 
-    setCommonHeaders(res, {
-      cache: "s-maxage=300, stale-while-revalidate=1800",
-    });
-
-    return res.status(200).json({
+    return sendJSON(res, 200, {
       success: true,
       count: data.length,
-      notice: data,
+      data,
+      source: "google-sheets"
     });
-  } catch {
-    return sendError(res, 502, "Unable to load remote data");
+
+  } catch (error) {
+
+    console.error(error);
+
+    return sendJSON(res, 502, {
+      success: false,
+      error: "Unable to read Notice Google Sheet"
+    });
   }
 }
