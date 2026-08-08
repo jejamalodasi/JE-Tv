@@ -1,25 +1,32 @@
-import { csvToObjects, handleOptions, sendError, setCommonHeaders } from "./_utils.js";
-
-const CSV_URL =
-  process.env.VERSION_CSV_URL ||
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKvgLEkW-YX8pMUEWwZcCGqwfbX5ZuGrDAZ7xTs4oiOZY8Im0DMDXo1ahLnQE4NQ/pub?gid=1135955112&single=true&output=csv";
+import { getSheet, sendJSON } from "./sheet.js";
 
 export default async function handler(req, res) {
-  if (handleOptions(req, res)) return;
+
+  if (req.method !== "GET") {
+    return sendJSON(res, 405, {
+      success: false,
+      error: "Method not allowed"
+    });
+  }
 
   try {
-    const response = await fetch(CSV_URL);
-    if (!response.ok) throw new Error("Version source unavailable");
 
-    const data = csvToObjects(await response.text());
-    const version = data[0] || {};
+    const data = await getSheet("version");
 
-    setCommonHeaders(res, { cache: "s-maxage=300, stale-while-revalidate=1800" });
-    return res.status(200).json({
+    return sendJSON(res, 200, {
       success: true,
-      ...version,
+      count: data.length,
+      data,
+      source: "google-sheets"
     });
-  } catch {
-    return sendError(res, 502, "Unable to load version information");
+
+  } catch (error) {
+
+    console.error(error);
+
+    return sendJSON(res, 502, {
+      success: false,
+      error: "Unable to read Version Google Sheet"
+    });
   }
 }
