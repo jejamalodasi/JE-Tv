@@ -1,62 +1,224 @@
-import { csvToObjects } from "./_utils.js";
+const SHEETS = {
+  channels: process.env.CHANNELS_CSV_URL,
+  premium: process.env.PREMIUM_CSV_URL,
+  config: process.env.CONFIG_CSV_URL,
+  banners: process.env.BANNERS_CSV_URL,
+  notice: process.env.NOTICE_CSV_URL,
+  version: process.env.VERSION_CSV_URL,
+};
 
-const SHEET_ID = process.env.GOOGLE_SHEET_ID || "";
-const SHEET_GID = process.env.GOOGLE_SHEET_GID || "0";
-const PUBLIC_CSV_URL = process.env.GOOGLE_SHEET_CSV_URL || "";
-const CACHE_MS = Number(process.env.SHEET_CACHE_MS || 15000);
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
 
-let memoryCache = { at: 0, rows: null };
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
 
-function sourceUrl() {
-  if (PUBLIC_CSV_URL) return PUBLIC_CSV_URL;
-  if (!SHEET_ID) throw new Error("GOOGLE_SHEET_ID or GOOGLE_SHEET_CSV_URL is required");
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${encodeURIComponent(SHEET_GID)}`;
-}
+    if (quoted) {
+      if (char === '"' && text[i + 1] === '"') {
+        cell += '"';
+        i++;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        cell += char;
+      }
+      continue;
+    }
 
-export async function getLiveSheetRows({ force = false } = {}) {
-  const now = Date.now();
+    if (char === '"') {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (char === "\n") {
+      row.push(cell);
 
-  if (!force && memoryCache.rows && now - memoryCache.at < CACHE_MS) {
-    return memoryCache.rows;
+      if (row.some(v => String(v).trim() !== "")) {
+        rows.push(row);
+      }
+
+      row = [];
+      cell = "";
+    } else if (char !== "\r") {
+      cell += char;
+    }
   }
 
-  const response = await fetch(sourceUrl(), {
+  row.push(cell);
+
+  if (row.some(v => String(v).trim() !== "")) {
+    rows.push(row);
+  }
+
+  if (!rows.length) return [];
+
+  const headers = rows[0].map((header, index) =>
+    String(header)
+      .replace(/^\uFEFF/, "")
+      .trim() || `column_${index + 1}`
+  );
+
+  return rows.slice(1).map(values => {
+    const item = {};
+
+    headers.forEach((header, index) => {
+      item[header] = String(values[index] ?? "").trim();
+    });
+
+    return item;
+  });
+}
+
+export async function getSheet(type) {
+  const url = SHEETS[type];
+
+  if (!url) {
+    throw new Error(`Missing ${type.toUpperCase()}_CSV_URL`);
+  }
+
+  // Cache busting
+  const separator = url.includes("?") ? "&" : "?";
+  const finalUrl = `${url}${separator}_refresh=${Date.now()}`;
+
+  const response = await fetch(finalUrl, {
+    method: "GET",
     cache: "no-store",
-    headers: { "User-Agent": "JE-TV-Live-Sheet-Sync/2.0" },
+    headers: {
+      Accept: "text/csv,text/plain,*/*",
+      "User-Agent": "JE-TV/Production"
+    }
   });
 
   if (!response.ok) {
-    throw new Error(`Google Sheet returned ${response.status}`);
+    throw new Error(
+      `${type} Google Sheet returned HTTP ${response.status}`
+    );
   }
 
-  const rows = csvToObjects(await response.text());
-  memoryCache = { at: now, rows };
-  return rows;
+  const text = await response.text();
+
+  if (!text.trim()) {
+    return [];
+  }
+
+  return parseCSV(text);
 }
 
 export function normalizeChannel(row) {
+  const enabledValue = String(
+    row.Enabled ??
+    row.enabled ??
+    row.Active ??
+    row.active ??
+    "TRUE"
+  ).trim().toLowerCase();
+
+  const enabled = ![
+    "false",
+    "0",
+    "no",
+    "off",
+    "disabled"
+  ].includes(enabledValue);
+
   return {
-    id: String(row.ID || row.id || row.Name || row.name || "").trim(),
-    Name: String(row.Name || row.name || "").trim(),
-    URL: String(row.URL || row.url || "").trim(),
-    Group: String(row.Group || row.group || "Other").trim() || "Other",
-    Logo: String(row.Logo || row.logo || "").trim(),
-    EPG_ID: String(row.EPG_ID || row.epg_id || row["EPG ID"] || "").trim(),
-    Country: String(row.Country || row.country || "").trim(),
-    Language: String(row.Language || row.language || "").trim(),
-    Enabled: String(row.Enabled ?? row.enabled ?? "TRUE").toLowerCase() !== "false",
+    id: String(
+      row.ID ??
+      row.id ??
+      row.Channel_ID ??
+      row.Name ??
+      row.name ??
+      ""
+    ).trim(),
+
+    Name: String(
+      row.Name ??
+      row.name ??
+      row.Channel ??
+      row.Title ??
+      ""
+    ).trim(),
+
+    URL: String(
+      row.URL ??
+      row.url ??
+      row.Stream_URL ??
+      row.stream_url ??
+      ""
+    ).trim(),
+
+    Group: String(
+      row.Group ??
+      row.group ??
+      row.Category ??
+      row.category ??
+      "Other"
+    ).trim() || "Other",
+
+    Logo: String(
+      row.Logo ??
+      row.logo ??
+      row.Logo_URL ??
+      row.logo_url ??
+      ""
+    ).trim(),
+
+    EPG_ID: String(
+      row.EPG_ID ??
+      row.epg_id ??
+      row["EPG ID"] ??
+      row.tvg_id ??
+      ""
+    ).trim(),
+
+    Country: String(
+      row.Country ??
+      row.country ??
+      ""
+    ).trim(),
+
+    Language: String(
+      row.Language ??
+      row.language ??
+      ""
+    ).trim(),
+
+    Enabled: enabled
   };
 }
 
-export async function getLiveChannels(options = {}) {
-  const rows = await getLiveSheetRows(options);
-  return rows.map(normalizeChannel).filter((c) => c.Enabled && c.Name && c.URL);
+export async function getChannels() {
+  const rows = await getSheet("channels");
+
+  return rows
+    .map(normalizeChannel)
+    .filter(channel =>
+      channel.Enabled &&
+      channel.Name &&
+      channel.URL
+    );
 }
 
-export function getSheetSourceInfo() {
-  return {
-    source: "google_sheets",
-    gid: SHEET_GID,
-    cache_ms: CACHE_MS,
-  };
-}
+export function sendJSON(res, status, data) {
+  res.status(status);
+
+  res.setHeader(
+    "Content-Type",
+    "application/json; charset=utf-8"
+  );
+
+  res.setHeader(
+    "Cache-Control",
+    "no-store, max-age=0"
+  );
+
+  res.setHeader(
+    "X-Data-Source",
+    "google-sheets"
+  );
+
+  return res.json(data);
+      }
