@@ -1,32 +1,62 @@
-import { getSheet, sendJSON } from "./sheet.js";
+import {
+  getBanners
+} from "./sheet.js";
 
-export default async function handler(req, res) {
+import {
+  handleOptions,
+  sendError,
+  setCommonHeaders
+} from "./_utils.js";
 
-  if (req.method !== "GET") {
-    return sendJSON(res, 405, {
-      success: false,
-      error: "Method not allowed"
-    });
+export default async function handler(
+  req,
+  res
+) {
+
+  if (
+    handleOptions(
+      req,
+      res
+    )
+  ) {
+    return;
   }
 
   try {
 
-    const data = await getSheet("banners");
+    const banners =
+      await getBanners();
 
-    return sendJSON(res, 200, {
-      success: true,
-      count: data.length,
-      data,
-      source: "google-sheets"
-    });
+    setCommonHeaders(
+      res,
+      {
+        cache: "no-store"
+      }
+    );
+
+    return res
+      .status(200)
+      .json({
+
+        success: true,
+
+        count:
+          banners.length,
+
+        banners
+
+      });
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      error
+    );
 
-    return sendJSON(res, 502, {
-      success: false,
-      error: "Unable to read Banners Google Sheet"
-    });
+    return sendError(
+      res,
+      502,
+      "Unable to read banners sheet"
+    );
   }
 }
