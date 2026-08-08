@@ -4,128 +4,195 @@ import {
   handleOptions,
   sendError,
   setCommonHeaders,
-  validHttpUrl,
+  validHttpUrl
 } from "./_utils.js";
 
-import { getChannels } from "./sheet.js";
-
-function proxyUrl(url) {
-  return `/api/stream?url=${encodeURIComponent(url)}`;
-}
+import {
+  getChannels
+} from "./sheet.js";
 
 async function getAllowedHosts() {
-  const channels = await getChannels();
 
-  const hosts = new Set();
+  const channels =
+    await getChannels();
 
-  for (const channel of channels) {
-    if (!validHttpUrl(channel.URL)) continue;
+  const hosts =
+    new Set();
+
+  for (
+    const channel of channels
+  ) {
+
+    const url =
+      channel.URL ??
+      channel.url ??
+      channel.Stream ??
+      channel.stream;
+
+    if (
+      !validHttpUrl(url)
+    ) {
+      continue;
+    }
 
     try {
-      hosts.add(new URL(channel.URL).hostname);
-    } catch {
-      // Ignore invalid URL
-    }
+
+      hosts.add(
+        new URL(url).hostname
+      );
+
+    } catch {}
   }
 
   return hosts;
 }
 
-function rewriteManifest(text, baseUrl) {
+function proxyUrl(
+  url
+) {
+
+  return `/api/stream?url=${
+    encodeURIComponent(url)
+  }`;
+}
+
+function rewriteManifest(
+  text,
+  baseUrl
+) {
+
   return text
     .split(/\r?\n/)
-    .map((line) => {
+    .map(line => {
 
-      // EXT-X-KEY / EXT-X-MEDIA / EXT-X-MAP etc.
-      line = line.replace(
-        /URI="([^"]+)"/g,
-        (match, uri) => {
-          const absolute = absoluteUrl(uri, baseUrl);
+      line =
+        line.replace(
+          /URI="([^"]+)"/g,
+          (
+            match,
+            uri
+          ) => {
 
-          if (!absolute) {
-            return match;
+            const absolute =
+              absoluteUrl(
+                uri,
+                baseUrl
+              );
+
+            return absolute
+              ? `URI="${proxyUrl(
+                  absolute
+                )}"`
+              : match;
           }
-
-          return `URI="${proxyUrl(absolute)}"`;
-        }
-      );
-
-      // HLS playlist / segment URL
-      if (
-        line.trim() &&
-        !line.startsWith("#")
-      ) {
-        const absolute = absoluteUrl(
-          line.trim(),
-          baseUrl
         );
 
-        if (absolute) {
-          return proxyUrl(absolute);
-        }
+      if (
+        line.trim() &&
+        !line
+          .trim()
+          .startsWith("#")
+      ) {
+
+        const absolute =
+          absoluteUrl(
+            line.trim(),
+            baseUrl
+          );
+
+        return absolute
+          ? proxyUrl(
+              absolute
+            )
+          : line;
       }
 
       return line;
+
     })
     .join("\n");
 }
 
-export default async function handler(req, res) {
+export default async function handler(
+  req,
+  res
+) {
 
-  if (handleOptions(req, res)) {
+  if (
+    handleOptions(
+      req,
+      res
+    )
+  ) {
     return;
   }
 
-  const rawUrl = getQuery(req, "url");
+  const rawUrl =
+    getQuery(
+      req,
+      "url"
+    );
 
-  if (!validHttpUrl(rawUrl)) {
+  if (
+    !validHttpUrl(
+      rawUrl
+    )
+  ) {
+
     return sendError(
       res,
       400,
-      "A valid http/https stream URL is required"
+      "A valid stream URL is required"
     );
   }
 
   try {
 
-    const target = new URL(rawUrl);
+    const target =
+      new URL(rawUrl);
 
-    /*
-     * IMPORTANT:
-     * Approved hosts now come directly from
-     * Google Sheets Channels data.
-     */
-    const allowedHosts = await getAllowedHosts();
+    const allowedHosts =
+      await getAllowedHosts();
 
-    if (!allowedHosts.has(target.hostname)) {
+    if (
+      !allowedHosts.has(
+        target.hostname
+      )
+    ) {
 
       return sendError(
         res,
         403,
-        "Stream host is not in the approved Google Sheets playlist"
+        "Stream host is not approved by the Channels sheet"
       );
     }
 
-    const response = await fetch(
-      target.toString(),
-      {
-        method: "GET",
+    const response =
+      await fetch(
+        target.toString(),
+        {
 
-        headers: {
-          "User-Agent":
-            "JE-TV-Stream-Proxy/2.0",
+          headers: {
 
-          Accept:
-            "application/vnd.apple.mpegurl,application/x-mpegURL,video/*,*/*",
-        },
+            "User-Agent":
+              "JE-TV-Stream-Proxy/3.0",
 
-        redirect: "follow",
+            Accept:
+              "application/vnd.apple.mpegurl,application/x-mpegURL,video/*,*/*"
 
-        cache: "no-store",
-      }
-    );
+          },
 
-    if (!response.ok) {
+          redirect:
+            "follow",
+
+          cache:
+            "no-store"
+        }
+      );
+
+    if (
+      !response.ok
+    ) {
 
       return sendError(
         res,
@@ -134,52 +201,41 @@ export default async function handler(req, res) {
       );
     }
 
-    /*
-     * Use the final URL after redirects as the
-     * base URL for relative HLS segments.
-     */
     const finalUrl =
       response.url ||
       target.toString();
 
     const contentType =
-      response.headers.get("content-type") || "";
+      response.headers.get(
+        "content-type"
+      ) || "";
 
     const isManifest =
-      contentType.toLowerCase().includes("mpegurl") ||
-      contentType.toLowerCase().includes("vnd.apple.mpegurl") ||
-      target.pathname.toLowerCase().endsWith(".m3u8");
+      contentType
+        .toLowerCase()
+        .includes("mpegurl") ||
 
-    setCommonHeaders(res, {
-      cache: isManifest
-        ? "no-store"
-        : "public, max-age=10",
-    });
+      contentType
+        .toLowerCase()
+        .includes("m3u8") ||
 
-    /*
-     * CORS
-     */
-    res.setHeader(
-      "Access-Control-Allow-Origin",
-      "*"
+      target.pathname
+        .toLowerCase()
+        .endsWith(".m3u8");
+
+    setCommonHeaders(
+      res,
+      {
+        cache:
+          isManifest
+            ? "no-store"
+            : "public, max-age=5"
+      }
     );
 
-    res.setHeader(
-      "Access-Control-Allow-Methods",
-      "GET,HEAD,OPTIONS"
-    );
-
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "Range,Content-Type,Accept,Origin"
-    );
-
-    res.setHeader(
-      "Access-Control-Expose-Headers",
-      "Content-Length,Content-Range,Accept-Ranges,Content-Type"
-    );
-
-    if (isManifest) {
+    if (
+      isManifest
+    ) {
 
       const text =
         await response.text();
@@ -189,8 +245,6 @@ export default async function handler(req, res) {
           text,
           finalUrl
         );
-
-      res.status(200);
 
       res.setHeader(
         "Content-Type",
@@ -202,39 +256,41 @@ export default async function handler(req, res) {
         "no-store, max-age=0"
       );
 
-      return res.send(rewritten);
+      return res
+        .status(200)
+        .send(
+          rewritten
+        );
     }
 
-    /*
-     * Video segments / TS / AAC / etc.
-     */
     const buffer =
       Buffer.from(
         await response.arrayBuffer()
       );
 
-    res.status(200);
-
     res.setHeader(
       "Content-Type",
       contentType ||
-        "application/octet-stream"
+      "application/octet-stream"
     );
 
-    return res.send(buffer);
+    return res
+      .status(200)
+      .send(
+        buffer
+      );
 
   } catch (error) {
 
     console.error(
-      "JE TV STREAM ERROR:",
+      "Stream proxy error:",
       error
     );
 
     return sendError(
       res,
       502,
-      error.message ||
-        "Unable to proxy stream"
+      "Unable to proxy stream"
     );
   }
 }
