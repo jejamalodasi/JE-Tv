@@ -1,21 +1,61 @@
-import { handleOptions, setCommonHeaders } from "./_utils.js";
+import { getSheet, sendJSON } from "./sheet.js";
 
 export default async function handler(req, res) {
-  if (handleOptions(req, res)) return;
 
-  setCommonHeaders(res, { cache: "no-store" });
-  return res.status(200).json({
-    success: true,
-    app_name: process.env.APP_NAME || "JE TV",
-    app_version: process.env.APP_VERSION || "2.0.0",
-    maintenance: process.env.MAINTENANCE === "true",
-    force_update: process.env.FORCE_UPDATE === "true",
-    data_source: "google_sheets",
-    auto_sync: true,
-    refresh_interval_ms: Number(process.env.CLIENT_REFRESH_MS || 30000),
-    playlist_url: "/api/playlist",
-    m3u_url: "/api/m3u",
-    epg_url: "/api/epg",
-    status_url: "/api/status",
-  });
+  if (req.method !== "GET") {
+    return sendJSON(res, 405, {
+      success: false,
+      error: "Method not allowed"
+    });
+  }
+
+  try {
+
+    const data = await getSheet("config");
+
+    const config = {};
+
+    for (const row of data) {
+
+      const key =
+        row.key ??
+        row.Key ??
+        row.name ??
+        row.Name;
+
+      const value =
+        row.value ??
+        row.Value ??
+        row.val ??
+        row.Val;
+
+      if (key) {
+        config[String(key).trim()] =
+          String(value ?? "").trim();
+      }
+    }
+
+    return sendJSON(res, 200, {
+      success: true,
+      data,
+      config,
+      source: "google-sheets",
+      auto_sync: true,
+      refresh_interval_ms:
+        Number(
+          process.env.CLIENT_REFRESH_MS ||
+          config.CLIENT_REFRESH_MS ||
+          30000
+        )
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return sendJSON(res, 502, {
+      success: false,
+      error: "Unable to read Config Google Sheet"
+    });
+  }
 }
