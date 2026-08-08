@@ -1,434 +1,800 @@
 const API = {
   playlist: "/api/playlist",
   config: "/api/config",
-  search: "/api/search",
   banner: "/api/banner",
+  search: "/api/search"
 };
 
-const channelsBox = document.getElementById("channels");
-const categoryBox = document.getElementById("categories");
-const searchBox = document.getElementById("search");
-const playerModal = document.getElementById("playerModal");
-const player = document.getElementById("player");
-const playerTitle = document.getElementById("playerTitle");
-const closePlayer = document.getElementById("closePlayer");
+const channelsBox =
+  document.getElementById("channels");
+
+const categoryBox =
+  document.getElementById("categories");
+
+const searchBox =
+  document.getElementById("search");
+
+const playerModal =
+  document.getElementById("playerModal");
+
+const player =
+  document.getElementById("player");
+
+const playerTitle =
+  document.getElementById("playerTitle");
+
+const closePlayer =
+  document.getElementById("closePlayer");
+
+const playerLoading =
+  document.getElementById("playerLoading");
+
+const playerError =
+  document.getElementById("playerError");
 
 let channels = [];
+
 let currentCategory = "All";
+
 let currentHls = null;
+
 let refreshTimer = null;
+
 let bannerTimer = null;
 
+let banners = [];
+
+let bannerIndex = 0;
+
+/* =========================
+   HELPERS
+========================= */
+
 function escapeHtml(value = "") {
-  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 async function apiGet(url) {
-  const response = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" } });
-  if (!response.ok) throw new Error(`API ${response.status}`);
+
+  const response = await fetch(url, {
+    cache: "no-store",
+
+    headers: {
+      Accept: "application/json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`API ${response.status}`);
+  }
+
   return response.json();
 }
 
-async function loadBanners() {
-  const bannerBox = document.getElementById("banner");
+/* =========================
+   CHANNELS
+========================= */
 
-  if (!bannerBox) return;
+function normalizeChannels(data) {
+
+  const list =
+    Array.isArray(data)
+      ? data
+      : (
+          data.channels ||
+          data.data ||
+          []
+        );
+
+  return list
+    .map((channel, index) => ({
+
+      ...channel,
+
+      id:
+        channel.id ??
+        channel.ID ??
+        channel.Id ??
+        String(index),
+
+      Name:
+        channel.Name ??
+        channel.name ??
+        channel.Channel ??
+        channel.channel ??
+        "Unknown Channel",
+
+      Group:
+        channel.Group ??
+        channel.group ??
+        channel.Category ??
+        channel.category ??
+        "General",
+
+      Logo:
+        channel.Logo ??
+        channel.logo ??
+        channel.Logo_URL ??
+        channel.logo_url ??
+        "",
+
+      URL:
+        channel.URL ??
+        channel.url ??
+        channel.Stream ??
+        channel.stream ??
+        "",
+
+      Language:
+        channel.Language ??
+        channel.language ??
+        "",
+
+      Country:
+        channel.Country ??
+        channel.country ??
+        ""
+
+    }))
+    .filter(channel => channel.URL);
+}
+
+async function loadChannels({
+  initial = false
+} = {}) {
 
   try {
 
-    const data = await apiGet(API.banner);
+    const data =
+      await apiGet(API.playlist);
 
-    const banners = Array.isArray(data.data)
-      ? data.data
-      : [];
+    const next =
+      normalizeChannels(data);
 
-    if (!banners.length) {
-      bannerBox.innerHTML = "";
-      return;
+    const oldIds =
+      new Set(
+        channels.map(
+          channel =>
+            `${channel.id}|${channel.URL}`
+        )
+      );
+
+    const newIds =
+      new Set(
+        next.map(
+          channel =>
+            `${channel.id}|${channel.URL}`
+        )
+      );
+
+    channels = next;
+
+    buildCategories();
+
+    applyView();
+
+    document.title =
+      `JE TV • ${channels.length} channels`;
+
+    if (
+      !initial &&
+      (
+        oldIds.size !== newIds.size ||
+        [...oldIds].some(
+          id => !newIds.has(id)
+        )
+      )
+    ) {
+
+      console.info(
+        "JE TV: Google Sheets channel data updated."
+      );
     }
-
-    /*
-     * Google Sheet column names can vary.
-     */
-    const getValue = (row, names) => {
-
-      for (const name of names) {
-
-        if (
-          row[name] !== undefined &&
-          String(row[name]).trim() !== ""
-        ) {
-          return String(row[name]).trim();
-        }
-
-      }
-
-      return "";
-    };
-
-    const validBanners = banners
-      .map(row => {
-
-        const image = getValue(row, [
-          "Image",
-          "image",
-          "Image_URL",
-          "image_url",
-          "Banner",
-          "banner",
-          "Banner_URL",
-          "banner_url",
-          "URL",
-          "url"
-        ]);
-
-        const title = getValue(row, [
-          "Title",
-          "title",
-          "Name",
-          "name"
-        ]);
-
-        const link = getValue(row, [
-          "Link",
-          "link",
-          "URL",
-          "url",
-          "Target",
-          "target"
-        ]);
-
-        const enabled = getValue(row, [
-          "Enabled",
-          "enabled",
-          "Active",
-          "active",
-          "Status",
-          "status"
-        ]);
-
-        return {
-          image,
-          title,
-          link,
-          enabled
-        };
-
-      })
-      .filter(item => {
-
-        if (!item.image) return false;
-
-        if (!item.enabled) return true;
-
-        return ![
-          "false",
-          "0",
-          "no",
-          "off",
-          "disabled"
-        ].includes(
-          item.enabled.toLowerCase()
-        );
-      });
-
-    if (!validBanners.length) {
-
-      bannerBox.innerHTML = "";
-
-      return;
-    }
-
-    /*
-     * For now show first active banner.
-     */
-    const banner = validBanners[0];
-
-    const image = escapeHtml(banner.image);
-    const title = escapeHtml(banner.title);
-
-    const content = `
-      <div class="banner-container">
-
-        ${
-          banner.link
-            ? `
-              <a
-                class="banner-link"
-                href="${escapeHtml(banner.link)}"
-              >
-            `
-            : ""
-        }
-
-          <img
-            src="${image}"
-            alt="${title || "JE TV Banner"}"
-            loading="eager"
-            onerror="this.parentElement?.parentElement?.remove?.()"
-          >
-
-          ${
-            title
-              ? `
-                <div class="banner-content">
-                  ${title}
-                </div>
-              `
-              : ""
-          }
-
-        ${
-          banner.link
-            ? "</a>"
-            : ""
-        }
-
-      </div>
-    `;
-
-    bannerBox.innerHTML = content;
 
   } catch (error) {
 
     console.warn(
-      "Banner loading failed:",
+      "Channel refresh failed:",
       error
     );
 
-    bannerBox.innerHTML = "";
-  }
-      }
+    if (initial) {
 
-async function loadChannels({ initial = false } = {}) {
-  try {
-    const data = await apiGet(API.playlist);
-    const next = data.channels || [];
-    const oldIds = new Set(channels.map(c => `${c.id}|${c.URL}`));
-    const newIds = new Set(next.map(c => `${c.id}|${c.URL}`));
-
-    channels = next;
-    buildCategories();
-    applyView();
-
-    // A small visual indication that the app is reading the live Sheet.
-    document.title = `JE TV • ${channels.length} channels`;
-
-    if (!initial && (oldIds.size !== newIds.size ||
-      [...oldIds].some(x => !newIds.has(x)))) {
-      console.info("JE TV: Google Sheet changes detected automatically.");
+      channelsBox.innerHTML =
+        `<div class="state">
+          Unable to load live channels.
+        </div>`;
     }
-  } catch (error) {
-    console.warn("Live Sheet refresh failed:", error);
-    if (initial) channelsBox.innerHTML = "<div class='state'>Unable to load live channels.</div>";
   }
 }
 
-async function start() {
-  try {
-    const config = await apiGet(API.config);
-    const interval = Math.max(Number(config.refresh_interval_ms || 30000), 10000);
-
-    await loadChannels({ initial: true });
-
-    await loadBanners();
-    
-    clearInterval(refreshTimer);
-    refreshTimer = setInterval(() => loadChannels(), interval);
-  } catch {
-    await loadChannels({ initial: true });
-    refreshTimer = setInterval(() => loadChannels(), 30000);
-  }
-}
+/* =========================
+   CATEGORIES
+========================= */
 
 function buildCategories() {
-  const groups = ["All", ...new Set(channels.map(c => c.Group).filter(Boolean))];
+
+  const groups = [
+    "All",
+    ...new Set(
+      channels
+        .map(
+          channel =>
+            String(
+              channel.Group || ""
+            ).trim()
+        )
+        .filter(Boolean)
+    )
+  ];
+
+  if (
+    !groups.includes(
+      currentCategory
+    )
+  ) {
+    currentCategory = "All";
+  }
+
   categoryBox.innerHTML = "";
 
   for (const group of groups) {
-    const button = document.createElement("button");
+
+    const button =
+      document.createElement("button");
+
+    button.type = "button";
+
     button.textContent = group;
-    button.classList.toggle("active", group === currentCategory);
+
+    button.classList.toggle(
+      "active",
+      group === currentCategory
+    );
+
     button.onclick = () => {
+
       currentCategory = group;
-      document.querySelectorAll("#categories button").forEach(b => b.classList.remove("active"));
+
+      document
+        .querySelectorAll(
+          "#categories button"
+        )
+        .forEach(
+          item =>
+            item.classList.remove(
+              "active"
+            )
+        );
+
       button.classList.add("active");
+
       applyView();
     };
+
     categoryBox.appendChild(button);
   }
 }
 
+/* =========================
+   FILTER
+========================= */
+
 function applyView() {
-  const keyword = searchBox.value.trim().toLowerCase();
-  let list = currentCategory === "All"
-    ? channels
-    : channels.filter(c => c.Group === currentCategory);
+
+  const keyword =
+    searchBox.value
+      .trim()
+      .toLowerCase();
+
+  let list =
+    currentCategory === "All"
+      ? channels
+      : channels.filter(
+          channel =>
+            channel.Group ===
+            currentCategory
+        );
 
   if (keyword) {
-    list = list.filter(c =>
-      [c.Name, c.Group, c.Language, c.Country].filter(Boolean)
-        .some(v => String(v).toLowerCase().includes(keyword))
-    );
+
+    list =
+      list.filter(channel =>
+
+        [
+          channel.Name,
+          channel.Group,
+          channel.Language,
+          channel.Country
+        ]
+          .filter(Boolean)
+          .some(value =>
+            String(value)
+              .toLowerCase()
+              .includes(keyword)
+          )
+      );
   }
 
   renderChannels(list);
 }
 
+/* =========================
+   CHANNEL UI
+========================= */
+
 function renderChannels(list) {
+
   channelsBox.innerHTML = "";
+
   if (!list.length) {
-    channelsBox.innerHTML = "<div class='state'>No channels found.</div>";
+
+    channelsBox.innerHTML =
+      `<div class="state">
+        No channels found.
+      </div>`;
+
     return;
   }
 
-  const fragment = document.createDocumentFragment();
+  const fragment =
+    document.createDocumentFragment();
 
   for (const channel of list) {
-    const card = document.createElement("button");
+
+    const card =
+      document.createElement("button");
+
     card.className = "channel";
+
     card.type = "button";
+
+    const logo =
+      channel.Logo ||
+      "https://placehold.co/320x320/111318/ffffff?text=TV";
+
     card.innerHTML = `
-      <img src="${escapeHtml(channel.Logo || "https://placehold.co/160x160?text=TV")}" alt="" loading="lazy">
-      <span>${escapeHtml(channel.Name)}</span>
-      <small>${escapeHtml(channel.Group)}</small>
+
+      <img
+        src="${escapeHtml(logo)}"
+        alt=""
+        loading="lazy"
+      >
+
+      <span class="channel-name">
+        ${escapeHtml(channel.Name)}
+      </span>
+
+      <small class="channel-meta">
+        ${escapeHtml(channel.Group)}
+      </small>
+
     `;
-    card.onclick = () => playChannel(channel);
+
+    card.onclick =
+      () => playChannel(channel);
+
     fragment.appendChild(card);
   }
 
   channelsBox.appendChild(fragment);
 }
 
-function stopPlayer() {
+/* =========================
+   BANNERS
+========================= */
+
+function normalizeBanners(data) {
+
+  const list =
+    Array.isArray(data)
+      ? data
+      : (
+          data.banners ||
+          data.data ||
+          []
+        );
+
+  return list
+    .map(row => ({
+
+      image:
+        row.Image ??
+        row.image ??
+        row.Image_URL ??
+        row.image_url ??
+        row.Banner ??
+        row.banner ??
+        row.Banner_URL ??
+        row.banner_url ??
+        row.URL ??
+        row.url ??
+        "",
+
+      title:
+        row.Title ??
+        row.title ??
+        row.Name ??
+        row.name ??
+        "",
+
+      link:
+        row.Link ??
+        row.link ??
+        row.Target ??
+        row.target ??
+        "",
+
+      enabled:
+        row.Enabled ??
+        row.enabled ??
+        row.Active ??
+        row.active ??
+        row.Status ??
+        row.status ??
+        "true"
+
+    }))
+    .filter(banner => {
+
+      if (!banner.image) {
+        return false;
+      }
+
+      return ![
+        "false",
+        "0",
+        "no",
+        "off",
+        "disabled"
+      ].includes(
+        String(
+          banner.enabled
+        ).toLowerCase()
+      );
+    });
+}
+
+async function loadBanners() {
+
   try {
-    if (currentHls) {
-      currentHls.destroy();
-      currentHls = null;
+
+    const data =
+      await apiGet(API.banner);
+
+    banners =
+      normalizeBanners(data);
+
+    bannerIndex = 0;
+
+    renderBanner();
+
+    clearInterval(
+      bannerTimer
+    );
+
+    if (banners.length > 1) {
+
+      bannerTimer =
+        setInterval(() => {
+
+          bannerIndex =
+            (
+              bannerIndex + 1
+            ) % banners.length;
+
+          renderBanner();
+
+        }, 6000);
     }
+
   } catch (error) {
-    console.warn("HLS destroy error:", error);
-  }
 
-  player.pause();
-  player.removeAttribute("src");
-  player.removeAttribute("poster");
-  player.load();
-}
+    console.warn(
+      "Banner refresh failed:",
+      error
+    );
 
-function showPlayerError(message) {
-  let errorBox = document.getElementById("playerError");
-
-  if (!errorBox) {
-    errorBox = document.createElement("div");
-    errorBox.id = "playerError";
-    errorBox.className = "player-error";
-
-    player.parentElement.appendChild(errorBox);
-  }
-
-  errorBox.textContent = message;
-  errorBox.style.display = "block";
-}
-
-function hidePlayerError() {
-  const errorBox = document.getElementById("playerError");
-
-  if (errorBox) {
-    errorBox.style.display = "none";
+    document.getElementById(
+      "banner"
+    ).innerHTML = "";
   }
 }
 
-async function playChannel(channel) {
+function renderBanner() {
 
-  stopPlayer();
-  hidePlayerError();
+  const box =
+    document.getElementById(
+      "banner"
+    );
 
-  playerModal.classList.remove("hide");
-  playerTitle.textContent = channel.Name;
+  if (!box) return;
 
-  /*
-   * IMPORTANT:
-   * Do not force desktop/fullscreen mode.
-   */
-  document.body.classList.add("player-open");
+  if (!banners.length) {
 
-  const source = `/api/stream?url=${encodeURIComponent(channel.URL)}`;
+    box.innerHTML = "";
 
-  if (!channel.URL) {
-    showPlayerError("এই channel-এর stream URL পাওয়া যায়নি।");
     return;
   }
 
-  /*
-   * HLS.js first.
-   * This is especially important for Android Chrome.
-   */
-  if (window.Hls && Hls.isSupported()) {
+  const banner =
+    banners[
+      bannerIndex %
+      banners.length
+    ];
 
-    currentHls = new Hls({
-      enableWorker: true,
-      lowLatencyMode: false,
+  const inner = `
 
-      backBufferLength: 30,
+    <div class="banner-card">
 
-      manifestLoadingMaxRetry: 3,
-      manifestLoadingRetryDelay: 1000,
+      <img
+        src="${escapeHtml(
+          banner.image
+        )}"
+        alt="${escapeHtml(
+          banner.title ||
+          "JE TV"
+        )}"
+        onerror="
+          this.closest(
+            '.banner-card'
+          ).remove()
+        "
+      >
 
-      levelLoadingMaxRetry: 3,
-      levelLoadingRetryDelay: 1000,
+      ${
+        banner.title
+          ? `
+            <div class="banner-overlay">
+              ${escapeHtml(
+                banner.title
+              )}
+            </div>
+          `
+          : ""
+      }
 
-      fragLoadingMaxRetry: 5,
-      fragLoadingRetryDelay: 1000,
+    </div>
 
-      maxBufferLength: 30,
-      maxMaxBufferLength: 60
-    });
+  `;
 
-    currentHls.attachMedia(player);
+  box.innerHTML =
+    banner.link
+      ? `
+        <a
+          href="${escapeHtml(
+            banner.link
+          )}"
+          target="_blank"
+          rel="noopener"
+        >
+          ${inner}
+        </a>
+      `
+      : inner;
+}
 
-    currentHls.on(
+/* =========================
+   PLAYER UI
+========================= */
+
+function setPlayerLoading(
+  show,
+  text = "Connecting..."
+) {
+
+  playerLoading.textContent =
+    text;
+
+  playerLoading.hidden =
+    !show;
+}
+
+function showPlayerError(
+  message
+) {
+
+  playerError.textContent =
+    message;
+
+  playerError.hidden =
+    false;
+
+  setPlayerLoading(false);
+}
+
+function hidePlayerError() {
+
+  playerError.hidden =
+    true;
+}
+
+/* =========================
+   PLAYER CLEANUP
+========================= */
+
+function stopPlayer() {
+
+  if (currentHls) {
+
+    try {
+      currentHls.stopLoad();
+    } catch {}
+
+    try {
+      currentHls.detachMedia();
+    } catch {}
+
+    try {
+      currentHls.destroy();
+    } catch {}
+
+    currentHls = null;
+  }
+
+  try {
+
+    player.pause();
+
+    player.removeAttribute(
+      "src"
+    );
+
+    player.load();
+
+  } catch {}
+}
+
+/* =========================
+   PLAY CHANNEL
+========================= */
+
+function playChannel(channel) {
+
+  stopPlayer();
+
+  hidePlayerError();
+
+  setPlayerLoading(
+    true,
+    "Connecting..."
+  );
+
+  playerModal.classList.remove(
+    "hide"
+  );
+
+  document.body.classList.add(
+    "player-open"
+  );
+
+  playerTitle.textContent =
+    channel.Name ||
+    "JE TV";
+
+  if (!channel.URL) {
+
+    showPlayerError(
+      "This channel has no stream URL."
+    );
+
+    return;
+  }
+
+  const source =
+    `/api/stream?url=${
+      encodeURIComponent(
+        channel.URL
+      )
+    }`;
+
+  /* =========================
+     HLS.JS
+  ========================= */
+
+  if (
+    window.Hls &&
+    Hls.isSupported()
+  ) {
+
+    const hls =
+      new Hls({
+
+        enableWorker: true,
+
+        lowLatencyMode: false,
+
+        backBufferLength: 30,
+
+        maxBufferLength: 30,
+
+        maxMaxBufferLength: 60,
+
+        liveSyncDurationCount: 3,
+
+        liveMaxLatencyDurationCount: 8,
+
+        manifestLoadingMaxRetry: 5,
+
+        manifestLoadingRetryDelay: 1000,
+
+        levelLoadingMaxRetry: 5,
+
+        levelLoadingRetryDelay: 1000,
+
+        fragLoadingMaxRetry: 6,
+
+        fragLoadingRetryDelay: 1000
+
+      });
+
+    currentHls = hls;
+
+    hls.attachMedia(
+      player
+    );
+
+    hls.on(
       Hls.Events.MEDIA_ATTACHED,
       () => {
 
-        currentHls.loadSource(source);
+        console.info(
+          "JE TV: media attached."
+        );
 
+        hls.loadSource(
+          source
+        );
       }
     );
 
-    currentHls.on(
+    hls.on(
       Hls.Events.MANIFEST_PARSED,
       () => {
 
-        player.play()
-          .then(() => {
-            hidePlayerError();
-          })
-          .catch(error => {
+        console.info(
+          "JE TV: manifest parsed."
+        );
 
-            console.warn(
-              "Autoplay blocked:",
-              error
-            );
+        setPlayerLoading(
+          false
+        );
 
-            /*
-             * Browser autoplay policy may block
-             * playback until user interaction.
-             */
+        player
+          .play()
+          .catch(() => {
+
             showPlayerError(
-              "▶️ Play চাপুন"
+              "Press Play to start the video."
             );
           });
       }
     );
 
-    currentHls.on(
+    hls.on(
+      Hls.Events.FRAG_BUFFERED,
+      () => {
+
+        setPlayerLoading(
+          false
+        );
+
+        hidePlayerError();
+      }
+    );
+
+    hls.on(
       Hls.Events.ERROR,
-      (event, data) => {
+      (_, data) => {
 
         console.warn(
-          "HLS error:",
+          "JE TV HLS error:",
           data
         );
 
@@ -436,74 +802,81 @@ async function playChannel(channel) {
           return;
         }
 
-        switch (data.type) {
+        if (
+          data.type ===
+          Hls.ErrorTypes.NETWORK_ERROR
+        ) {
 
-          case Hls.ErrorTypes.NETWORK_ERROR:
+          showPlayerError(
+            "Stream connection failed. Retrying..."
+          );
 
-            showPlayerError(
-              "Stream connection সমস্যা। আবার চেষ্টা করছি..."
-            );
+          try {
+            hls.startLoad();
+          } catch {}
 
-            try {
-              currentHls.startLoad();
-            } catch {
-              // Ignore
-            }
-
-            break;
-
-          case Hls.ErrorTypes.MEDIA_ERROR:
-
-            showPlayerError(
-              "Video format সমস্যা। আবার চেষ্টা করছি..."
-            );
-
-            try {
-              currentHls.recoverMediaError();
-            } catch {
-              // Ignore
-            }
-
-            break;
-
-          default:
-
-            showPlayerError(
-              "এই channel এখন play করা যাচ্ছে না।"
-            );
-
-            try {
-              currentHls.destroy();
-            } catch {
-              // Ignore
-            }
-
-            currentHls = null;
+          return;
         }
+
+        if (
+          data.type ===
+          Hls.ErrorTypes.MEDIA_ERROR
+        ) {
+
+          showPlayerError(
+            "Video decoding error. Recovering..."
+          );
+
+          try {
+            hls.recoverMediaError();
+          } catch {}
+
+          return;
+        }
+
+        showPlayerError(
+          "This channel cannot be played right now."
+        );
+
+        try {
+          hls.destroy();
+        } catch {}
+
+        currentHls = null;
       }
     );
 
     return;
   }
 
-  /*
-   * Safari / browsers with native HLS.
-   */
+  /* =========================
+     NATIVE HLS
+  ========================= */
+
   if (
     player.canPlayType(
       "application/vnd.apple.mpegurl"
     )
   ) {
 
-    player.src = source;
+    player.src =
+      source;
 
     player.addEventListener(
       "loadedmetadata",
       () => {
 
-        player.play()
+        setPlayerLoading(
+          false
+        );
+
+        player
+          .play()
           .catch(() => {
-            showPlayerError("▶️ Play চাপুন");
+
+            showPlayerError(
+              "Press Play to start the video."
+            );
           });
 
       },
@@ -515,7 +888,7 @@ async function playChannel(channel) {
       () => {
 
         showPlayerError(
-          "Stream চালানো যাচ্ছে না।"
+          "Unable to play this stream."
         );
 
       },
@@ -526,40 +899,109 @@ async function playChannel(channel) {
   }
 
   showPlayerError(
-    "এই browser HLS video support করে না।"
+    "This browser does not support HLS playback."
   );
-      }
-
-function playChannel(channel) {
-  stopPlayer();
-  playerModal.classList.remove("hide");
-  playerTitle.textContent = channel.Name;
-  const url = `/api/stream?url=${encodeURIComponent(channel.URL)}`;
-
-  if (window.Hls?.isSupported()) {
-    currentHls = new Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 30 });
-    currentHls.loadSource(url);
-    currentHls.attachMedia(player);
-    currentHls.on(Hls.Events.MANIFEST_PARSED, () => player.play().catch(() => {}));
-  } else if (player.canPlayType("application/vnd.apple.mpegurl")) {
-    player.src = url;
-    player.play().catch(() => {});
-  }
 }
 
+/* =========================
+   CLOSE PLAYER
+========================= */
+
 function closePlayerModal() {
+
   stopPlayer();
 
-  playerModal.classList.add("hide");
+  playerModal.classList.add(
+    "hide"
+  );
 
-  document.body.classList.remove("player-open");
+  document.body.classList.remove(
+    "player-open"
+  );
 
   hidePlayerError();
 }
 
-closePlayer.onclick = closePlayerModal;
-playerModal.onclick = e => { if (e.target === playerModal) closePlayerModal(); };
-document.onkeydown = e => { if (e.key === "Escape") closePlayerModal(); };
-searchBox.oninput = applyView;
+closePlayer.onclick =
+  closePlayerModal;
+
+playerModal.addEventListener(
+  "click",
+  event => {
+
+    if (
+      event.target ===
+      playerModal
+    ) {
+      closePlayerModal();
+    }
+  }
+);
+
+document.addEventListener(
+  "keydown",
+  event => {
+
+    if (
+      event.key === "Escape"
+    ) {
+      closePlayerModal();
+    }
+  }
+);
+
+searchBox.addEventListener(
+  "input",
+  applyView
+);
+
+/* =========================
+   START
+========================= */
+
+async function start() {
+
+  let interval =
+    30000;
+
+  try {
+
+    const config =
+      await apiGet(
+        API.config
+      );
+
+    interval =
+      Math.max(
+        Number(
+          config.refresh_interval_ms ||
+          30000
+        ),
+        10000
+      );
+
+  } catch {}
+
+  await Promise.allSettled([
+    loadChannels({
+      initial: true
+    }),
+
+    loadBanners()
+  ]);
+
+  clearInterval(
+    refreshTimer
+  );
+
+  refreshTimer =
+    setInterval(() => {
+
+      loadChannels();
+
+      loadBanners();
+
+    }, interval);
+}
 
 start();
