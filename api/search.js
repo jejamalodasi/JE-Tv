@@ -1,64 +1,98 @@
 import {
-  getChannels,
-  sendJSON
+  getChannels
 } from "./sheet.js";
 
-export default async function handler(req, res) {
+import {
+  getQuery,
+  handleOptions,
+  sendError,
+  setCommonHeaders
+} from "./_utils.js";
 
-  if (req.method !== "GET") {
-    return sendJSON(res, 405, {
-      success: false,
-      error: "Method not allowed"
-    });
-  }
+export default async function handler(
+  req,
+  res
+) {
 
-  const query = String(
-    req.query?.q || ""
-  ).trim().toLowerCase();
-
-  if (!query) {
-    return sendJSON(res, 400, {
-      success: false,
-      error: "Query parameter q is required"
-    });
+  if (
+    handleOptions(
+      req,
+      res
+    )
+  ) {
+    return;
   }
 
   try {
 
-    const channels = await getChannels();
+    const query =
+      String(
+        getQuery(
+          req,
+          "q"
+        ) || ""
+      )
+        .trim()
+        .toLowerCase();
 
-    const result = channels.filter(channel => {
+    const channels =
+      await getChannels();
 
-      const fields = [
-        channel.Name,
-        channel.Group,
-        channel.Country,
-        channel.Language,
-        channel.EPG_ID
-      ];
+    const results =
+      !query
+        ? channels
+        : channels.filter(
+            channel =>
+              [
+                channel.Name,
+                channel.name,
+                channel.Group,
+                channel.group,
+                channel.Language,
+                channel.language,
+                channel.Country,
+                channel.country
+              ]
+                .filter(Boolean)
+                .some(
+                  value =>
+                    String(value)
+                      .toLowerCase()
+                      .includes(query)
+                )
+          );
 
-      return fields.some(value =>
-        String(value || "")
-          .toLowerCase()
-          .includes(query)
-      );
-    });
+    setCommonHeaders(
+      res,
+      {
+        cache: "no-store"
+      }
+    );
 
-    return sendJSON(res, 200, {
-      success: true,
-      query,
-      count: result.length,
-      result,
-      source: "google-sheets"
-    });
+    return res
+      .status(200)
+      .json({
+
+        success: true,
+
+        count:
+          results.length,
+
+        channels:
+          results
+
+      });
 
   } catch (error) {
 
-    console.error("SEARCH ERROR:", error);
+    console.error(
+      error
+    );
 
-    return sendJSON(res, 502, {
-      success: false,
-      error: "Unable to read Channels Google Sheet"
-    });
+    return sendError(
+      res,
+      502,
+      "Unable to search channels"
+    );
   }
 }
