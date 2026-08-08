@@ -127,14 +127,233 @@ function renderChannels(list) {
 }
 
 function stopPlayer() {
+  try {
+    if (currentHls) {
+      currentHls.destroy();
+      currentHls = null;
+    }
+  } catch (error) {
+    console.warn("HLS destroy error:", error);
+  }
+
   player.pause();
   player.removeAttribute("src");
+  player.removeAttribute("poster");
   player.load();
-  if (currentHls) {
-    currentHls.destroy();
-    currentHls = null;
+}
+
+function showPlayerError(message) {
+  let errorBox = document.getElementById("playerError");
+
+  if (!errorBox) {
+    errorBox = document.createElement("div");
+    errorBox.id = "playerError";
+    errorBox.className = "player-error";
+
+    player.parentElement.appendChild(errorBox);
+  }
+
+  errorBox.textContent = message;
+  errorBox.style.display = "block";
+}
+
+function hidePlayerError() {
+  const errorBox = document.getElementById("playerError");
+
+  if (errorBox) {
+    errorBox.style.display = "none";
   }
 }
+
+async function playChannel(channel) {
+
+  stopPlayer();
+  hidePlayerError();
+
+  playerModal.classList.remove("hide");
+  playerTitle.textContent = channel.Name;
+
+  /*
+   * IMPORTANT:
+   * Do not force desktop/fullscreen mode.
+   */
+  document.body.classList.add("player-open");
+
+  const source = `/api/stream?url=${encodeURIComponent(channel.URL)}`;
+
+  if (!channel.URL) {
+    showPlayerError("এই channel-এর stream URL পাওয়া যায়নি।");
+    return;
+  }
+
+  /*
+   * HLS.js first.
+   * This is especially important for Android Chrome.
+   */
+  if (window.Hls && Hls.isSupported()) {
+
+    currentHls = new Hls({
+      enableWorker: true,
+      lowLatencyMode: false,
+
+      backBufferLength: 30,
+
+      manifestLoadingMaxRetry: 3,
+      manifestLoadingRetryDelay: 1000,
+
+      levelLoadingMaxRetry: 3,
+      levelLoadingRetryDelay: 1000,
+
+      fragLoadingMaxRetry: 5,
+      fragLoadingRetryDelay: 1000,
+
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60
+    });
+
+    currentHls.attachMedia(player);
+
+    currentHls.on(
+      Hls.Events.MEDIA_ATTACHED,
+      () => {
+
+        currentHls.loadSource(source);
+
+      }
+    );
+
+    currentHls.on(
+      Hls.Events.MANIFEST_PARSED,
+      () => {
+
+        player.play()
+          .then(() => {
+            hidePlayerError();
+          })
+          .catch(error => {
+
+            console.warn(
+              "Autoplay blocked:",
+              error
+            );
+
+            /*
+             * Browser autoplay policy may block
+             * playback until user interaction.
+             */
+            showPlayerError(
+              "▶️ Play চাপুন"
+            );
+          });
+      }
+    );
+
+    currentHls.on(
+      Hls.Events.ERROR,
+      (event, data) => {
+
+        console.warn(
+          "HLS error:",
+          data
+        );
+
+        if (!data.fatal) {
+          return;
+        }
+
+        switch (data.type) {
+
+          case Hls.ErrorTypes.NETWORK_ERROR:
+
+            showPlayerError(
+              "Stream connection সমস্যা। আবার চেষ্টা করছি..."
+            );
+
+            try {
+              currentHls.startLoad();
+            } catch {
+              // Ignore
+            }
+
+            break;
+
+          case Hls.ErrorTypes.MEDIA_ERROR:
+
+            showPlayerError(
+              "Video format সমস্যা। আবার চেষ্টা করছি..."
+            );
+
+            try {
+              currentHls.recoverMediaError();
+            } catch {
+              // Ignore
+            }
+
+            break;
+
+          default:
+
+            showPlayerError(
+              "এই channel এখন play করা যাচ্ছে না।"
+            );
+
+            try {
+              currentHls.destroy();
+            } catch {
+              // Ignore
+            }
+
+            currentHls = null;
+        }
+      }
+    );
+
+    return;
+  }
+
+  /*
+   * Safari / browsers with native HLS.
+   */
+  if (
+    player.canPlayType(
+      "application/vnd.apple.mpegurl"
+    )
+  ) {
+
+    player.src = source;
+
+    player.addEventListener(
+      "loadedmetadata",
+      () => {
+
+        player.play()
+          .catch(() => {
+            showPlayerError("▶️ Play চাপুন");
+          });
+
+      },
+      { once: true }
+    );
+
+    player.addEventListener(
+      "error",
+      () => {
+
+        showPlayerError(
+          "Stream চালানো যাচ্ছে না।"
+        );
+
+      },
+      { once: true }
+    );
+
+    return;
+  }
+
+  showPlayerError(
+    "এই browser HLS video support করে না।"
+  );
+      }
 
 function playChannel(channel) {
   stopPlayer();
@@ -155,7 +374,12 @@ function playChannel(channel) {
 
 function closePlayerModal() {
   stopPlayer();
+
   playerModal.classList.add("hide");
+
+  document.body.classList.remove("player-open");
+
+  hidePlayerError();
 }
 
 closePlayer.onclick = closePlayerModal;
