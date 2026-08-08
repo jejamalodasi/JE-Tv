@@ -2,6 +2,7 @@ const API = {
   playlist: "/api/playlist",
   config: "/api/config",
   search: "/api/search",
+  banner: "/api/banner",
 };
 
 const channelsBox = document.getElementById("channels");
@@ -16,6 +17,7 @@ let channels = [];
 let currentCategory = "All";
 let currentHls = null;
 let refreshTimer = null;
+let bannerTimer = null;
 
 function escapeHtml(value = "") {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;")
@@ -27,6 +29,177 @@ async function apiGet(url) {
   if (!response.ok) throw new Error(`API ${response.status}`);
   return response.json();
 }
+
+async function loadBanners() {
+  const bannerBox = document.getElementById("banner");
+
+  if (!bannerBox) return;
+
+  try {
+
+    const data = await apiGet(API.banner);
+
+    const banners = Array.isArray(data.data)
+      ? data.data
+      : [];
+
+    if (!banners.length) {
+      bannerBox.innerHTML = "";
+      return;
+    }
+
+    /*
+     * Google Sheet column names can vary.
+     */
+    const getValue = (row, names) => {
+
+      for (const name of names) {
+
+        if (
+          row[name] !== undefined &&
+          String(row[name]).trim() !== ""
+        ) {
+          return String(row[name]).trim();
+        }
+
+      }
+
+      return "";
+    };
+
+    const validBanners = banners
+      .map(row => {
+
+        const image = getValue(row, [
+          "Image",
+          "image",
+          "Image_URL",
+          "image_url",
+          "Banner",
+          "banner",
+          "Banner_URL",
+          "banner_url",
+          "URL",
+          "url"
+        ]);
+
+        const title = getValue(row, [
+          "Title",
+          "title",
+          "Name",
+          "name"
+        ]);
+
+        const link = getValue(row, [
+          "Link",
+          "link",
+          "URL",
+          "url",
+          "Target",
+          "target"
+        ]);
+
+        const enabled = getValue(row, [
+          "Enabled",
+          "enabled",
+          "Active",
+          "active",
+          "Status",
+          "status"
+        ]);
+
+        return {
+          image,
+          title,
+          link,
+          enabled
+        };
+
+      })
+      .filter(item => {
+
+        if (!item.image) return false;
+
+        if (!item.enabled) return true;
+
+        return ![
+          "false",
+          "0",
+          "no",
+          "off",
+          "disabled"
+        ].includes(
+          item.enabled.toLowerCase()
+        );
+      });
+
+    if (!validBanners.length) {
+
+      bannerBox.innerHTML = "";
+
+      return;
+    }
+
+    /*
+     * For now show first active banner.
+     */
+    const banner = validBanners[0];
+
+    const image = escapeHtml(banner.image);
+    const title = escapeHtml(banner.title);
+
+    const content = `
+      <div class="banner-container">
+
+        ${
+          banner.link
+            ? `
+              <a
+                class="banner-link"
+                href="${escapeHtml(banner.link)}"
+              >
+            `
+            : ""
+        }
+
+          <img
+            src="${image}"
+            alt="${title || "JE TV Banner"}"
+            loading="eager"
+            onerror="this.parentElement?.parentElement?.remove?.()"
+          >
+
+          ${
+            title
+              ? `
+                <div class="banner-content">
+                  ${title}
+                </div>
+              `
+              : ""
+          }
+
+        ${
+          banner.link
+            ? "</a>"
+            : ""
+        }
+
+      </div>
+    `;
+
+    bannerBox.innerHTML = content;
+
+  } catch (error) {
+
+    console.warn(
+      "Banner loading failed:",
+      error
+    );
+
+    bannerBox.innerHTML = "";
+  }
+      }
 
 async function loadChannels({ initial = false } = {}) {
   try {
@@ -59,6 +232,8 @@ async function start() {
 
     await loadChannels({ initial: true });
 
+    await loadBanners();
+    
     clearInterval(refreshTimer);
     refreshTimer = setInterval(() => loadChannels(), interval);
   } catch {
