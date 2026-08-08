@@ -1,18 +1,14 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
 
-  <!-- IMPORTANT FOR MOBILE -->
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
   >
 
-  <meta
-    name="theme-color"
-    content="#08090b"
-  >
+  <meta name="theme-color" content="#08090b">
 
   <meta
     name="description"
@@ -24,301 +20,42 @@
 
   <title>JE TV</title>
 
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css">
-
-  <style>
-    /* =========================
-       JE TV MOBILE PLAYER FIX
-       ========================= */
-
-    html,
-    body {
-      width: 100%;
-      min-height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow-x: hidden;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body.player-open {
-      overflow: hidden;
-      position: fixed;
-      width: 100%;
-      left: 0;
-      right: 0;
-    }
-
-    /* =========================
-       BANNER
-       ========================= */
-
-    #banner {
-      width: 100%;
-      overflow: hidden;
-    }
-
-    .banner-container {
-      position: relative;
-      width: 100%;
-      overflow: hidden;
-      border-radius: 12px;
-    }
-
-    .banner-container img {
-      display: block;
-      width: 100%;
-      height: auto;
-      max-height: 420px;
-      object-fit: cover;
-    }
-
-    .banner-content {
-      position: relative;
-      width: 100%;
-    }
-
-    .banner-link {
-      display: block;
-      color: inherit;
-      text-decoration: none;
-    }
-
-    /* =========================
-       PLAYER MODAL
-       ========================= */
-
-    #playerModal {
-      position: fixed;
-
-      inset: 0;
-
-      width: 100vw;
-      height: 100dvh;
-
-      z-index: 999999;
-
-      background: #000;
-
-      display: flex;
-      flex-direction: column;
-
-      padding:
-        env(safe-area-inset-top)
-        env(safe-area-inset-right)
-        env(safe-area-inset-bottom)
-        env(safe-area-inset-left);
-
-      overflow: hidden;
-    }
-
-    #playerModal.hide {
-      display: none !important;
-    }
-
-    .playerHeader {
-      width: 100%;
-      min-height: 52px;
-
-      flex: 0 0 52px;
-
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      padding: 0 12px;
-
-      background: #08090b;
-      color: #fff;
-
-      z-index: 10;
-    }
-
-    #playerTitle {
-      min-width: 0;
-
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-
-      font-size: 16px;
-      font-weight: 600;
-    }
-
-    #closePlayer {
-      flex: 0 0 auto;
-
-      width: 42px;
-      height: 42px;
-
-      border: 0;
-      border-radius: 50%;
-
-      background: rgba(255,255,255,.12);
-      color: #fff;
-
-      font-size: 20px;
-
-      cursor: pointer;
-
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    #player {
-      display: block;
-
-      width: 100%;
-      height: calc(100dvh - 52px);
-
-      max-width: 100%;
-      max-height: calc(100dvh - 52px);
-
-      margin: 0;
-      padding: 0;
-
-      background: #000;
-
-      object-fit: contain;
-
-      outline: none;
-
-      /* IMPORTANT */
-      -webkit-playsinline: true;
-    }
-
-    /* =========================
-       PLAYER ERROR
-       ========================= */
-
-    .player-error {
-      position: absolute;
-
-      left: 50%;
-      bottom: 35px;
-
-      transform: translateX(-50%);
-
-      width: calc(100% - 32px);
-      max-width: 500px;
-
-      padding: 13px 16px;
-
-      border-radius: 10px;
-
-      background: rgba(20,20,20,.94);
-
-      color: #fff;
-
-      text-align: center;
-
-      font-size: 14px;
-
-      z-index: 20;
-    }
-
-    /* =========================
-       MOBILE
-       ========================= */
-
-    @media (max-width: 600px) {
-
-      header {
-        width: 100%;
-      }
-
-      #banner {
-        padding: 0 10px;
-      }
-
-      #playerModal {
-        width: 100%;
-        height: 100dvh;
-
-        /* Never create desktop-sized layout */
-        min-width: 0;
-        max-width: 100vw;
-      }
-
-      .playerHeader {
-        min-height: 50px;
-        flex-basis: 50px;
-      }
-
-      #player {
-        height: calc(100dvh - 50px);
-        max-height: calc(100dvh - 50px);
-      }
-    }
-
-    /* =========================
-       LANDSCAPE PHONE
-       ========================= */
-
-    @media (orientation: landscape) and (max-height: 600px) {
-
-      .playerHeader {
-        min-height: 44px;
-        flex-basis: 44px;
-      }
-
-      #player {
-        height: calc(100dvh - 44px);
-        max-height: calc(100dvh - 44px);
-      }
-
-      #playerTitle {
-        font-size: 14px;
-      }
-    }
-  </style>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
 
-  <header>
-    <h1>📺 JE TV</h1>
+  <header class="site-header">
+
+    <div class="brand">
+      📺 JE TV
+    </div>
 
     <input
       id="search"
       type="search"
       placeholder="Search channel..."
       autocomplete="off"
-      enterkeyhint="search"
     >
-  </header>
 
-  <!-- =========================
-       BANNER
-       ========================= -->
+  </header>
 
   <section
     id="banner"
+    class="banner"
     aria-label="Featured content"
-  >
-    <div class="state">
-      Loading...
-    </div>
-  </section>
-
-  <!-- =========================
-       CATEGORIES
-       ========================= -->
+  ></section>
 
   <nav
     id="categories"
+    class="categories"
     aria-label="Channel categories"
   ></nav>
 
-  <!-- =========================
-       CHANNELS
-       ========================= -->
-
   <main
     id="channels"
+    class="channels"
     aria-live="polite"
   >
     <div class="state">
@@ -326,19 +63,17 @@
     </div>
   </main>
 
-  <!-- =========================
-       PLAYER
-       ========================= -->
+  <!-- PLAYER -->
 
   <div
     id="playerModal"
-    class="hide"
+    class="player-modal hide"
     role="dialog"
     aria-modal="true"
     aria-label="Video player"
   >
 
-    <div class="playerHeader">
+    <div class="player-header">
 
       <span id="playerTitle">
         JE TV
@@ -354,26 +89,38 @@
 
     </div>
 
-    <video
-      id="player"
-      controls
-      playsinline
-      webkit-playsinline
-      preload="metadata"
-      x-webkit-airplay="allow"
-    ></video>
+    <div class="player-stage">
+
+      <video
+        id="player"
+        controls
+        playsinline
+        webkit-playsinline
+        preload="metadata"
+      ></video>
+
+      <div
+        id="playerLoading"
+        class="player-message"
+      >
+        Connecting...
+      </div>
+
+      <div
+        id="playerError"
+        class="player-message error"
+        hidden
+      ></div>
+
+    </div>
 
   </div>
 
-  <!-- HLS -->
-
   <script
-    src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"
+    src="https://cdn.jsdelivr.net/npm/hls.js@1.6.13/dist/hls.min.js"
   ></script>
 
-  <!-- APP -->
-
-  <script src="app.js"></script>
+  <script src="/app.js"></script>
 
 </body>
 </html>
