@@ -1,80 +1,46 @@
 export function getQuery(req, key) {
+  const value = req.query?.[key];
 
-  const value =
-    req.query?.[key];
-
-  return Array.isArray(value)
-    ? value[0]
-    : value;
+  return Array.isArray(value) ? value[0] : value;
 }
 
 export function validHttpUrl(value) {
+  if (!value) return false;
 
   try {
-
-    const url =
-      new URL(
-        String(value)
-      );
+    const url = new URL(String(value));
 
     return (
       url.protocol === "http:" ||
       url.protocol === "https:"
     );
-
   } catch {
-
     return false;
   }
 }
 
-export function absoluteUrl(
-  value,
-  base
-) {
+export function absoluteUrl(value, base) {
+  if (!value || !base) return null;
 
   try {
-
-    return new URL(
-      value,
-      base
-    ).toString();
-
+    return new URL(String(value).trim(), base).toString();
   } catch {
-
     return null;
   }
 }
 
-export function handleOptions(
-  req,
-  res
-) {
-
-  if (
-    req.method ===
-    "OPTIONS"
-  ) {
-
-    res
-      .status(204)
-      .end();
-
+export function handleOptions(req, res) {
+  if (req.method === "OPTIONS") {
+    setCommonHeaders(res);
+    res.status(204).end();
     return true;
   }
 
   return false;
 }
 
-export function setCommonHeaders(
-  res,
-  options = {}
-) {
-
-  res.setHeader(
-    "Access-Control-Allow-Origin",
-    "*"
-  );
+export function setCommonHeaders(res, options = {}) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
 
   res.setHeader(
     "Access-Control-Allow-Methods",
@@ -83,16 +49,24 @@ export function setCommonHeaders(
 
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Origin,Accept,Content-Type,Range"
+    "Origin,Accept,Content-Type,Range,User-Agent"
   );
 
   res.setHeader(
     "Access-Control-Expose-Headers",
-    "Content-Length,Content-Range,Accept-Ranges,Content-Type"
+    [
+      "Content-Length",
+      "Content-Range",
+      "Accept-Ranges",
+      "Content-Type",
+      "Cache-Control",
+      "ETag"
+    ].join(", ")
   );
 
-  if (options.cache) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
 
+  if (options.cache) {
     res.setHeader(
       "Cache-Control",
       options.cache
@@ -100,46 +74,53 @@ export function setCommonHeaders(
   }
 }
 
-export function sendError(
-  res,
-  status,
-  message
-) {
-
-  setCommonHeaders(
-    res,
-    {
-      cache: "no-store"
-    }
-  );
+export function sendError(res, status, message) {
+  setCommonHeaders(res, {
+    cache: "no-store"
+  });
 
   return res
     .status(status)
     .json({
       success: false,
-      error: message
+      error: String(message || "Unknown error")
     });
 }
 
-export async function fetchCsv(
-  url
+export async function fetchWithTimeout(
+  url,
+  options = {},
+  timeout = 15000
 ) {
+  const controller = new AbortController();
 
-  const response =
-    await fetch(
-      url,
-      {
-        cache: "no-store",
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeout);
 
-        headers: {
-          Accept:
-            "text/csv,text/plain,*/*"
-        }
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function fetchCsv(url) {
+  const response = await fetchWithTimeout(
+    url,
+    {
+      cache: "no-store",
+      headers: {
+        Accept: "text/csv,text/plain,*/*"
       }
-    );
+    },
+    15000
+  );
 
   if (!response.ok) {
-
     throw new Error(
       `Google Sheet returned ${response.status}`
     );
@@ -148,151 +129,97 @@ export async function fetchCsv(
   return response.text();
 }
 
-export function parseCsv(
-  text
-) {
+export function parseCsv(text) {
+  if (!text) return [];
 
   const rows = [];
 
   let row = [];
-
   let cell = "";
-
   let quoted = false;
 
-  for (
-    let i = 0;
-    i < text.length;
-    i++
-  ) {
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
 
-    const ch =
-      text[i];
-
-    const next =
-      text[i + 1];
-
-    if (
-      ch === '"' &&
-      quoted &&
-      next === '"'
-    ) {
-
+    if (ch === '"' && quoted && next === '"') {
       cell += '"';
-
       i++;
-
       continue;
     }
 
-    if (
-      ch === '"'
-    ) {
-
-      quoted =
-        !quoted;
-
+    if (ch === '"') {
+      quoted = !quoted;
       continue;
     }
 
-    if (
-      ch === "," &&
-      !quoted
-    ) {
-
+    if (ch === "," && !quoted) {
       row.push(cell);
-
       cell = "";
-
       continue;
     }
 
     if (
-      (
-        ch === "\n" ||
-        ch === "\r"
-      ) &&
+      (ch === "\n" || ch === "\r") &&
       !quoted
     ) {
-
-      if (
-        ch === "\r" &&
-        next === "\n"
-      ) {
+      if (ch === "\r" && next === "\n") {
         i++;
       }
 
       row.push(cell);
-
       cell = "";
 
       if (
         row.some(
           value =>
-            String(value)
-              .trim() !== ""
+            String(value).trim() !== ""
         )
       ) {
-
         rows.push(row);
       }
 
       row = [];
-
       continue;
     }
 
     cell += ch;
   }
 
-  if (
-    cell.length ||
-    row.length
-  ) {
-
+  if (cell.length || row.length) {
     row.push(cell);
 
     if (
       row.some(
         value =>
-          String(value)
-            .trim() !== ""
+          String(value).trim() !== ""
       )
     ) {
-
       rows.push(row);
     }
   }
 
-  if (!rows.length) {
-    return [];
-  }
+  if (!rows.length) return [];
 
-  const headers =
-    rows
-      .shift()
-      .map(
-        header =>
-          String(header)
-            .trim()
-            .replace(
-              /^\uFEFF/,
-              ""
-            )
-      );
+  const headers = rows
+    .shift()
+    .map(header =>
+      String(header)
+        .trim()
+        .replace(/^\uFEFF/, "")
+    );
 
-  return rows.map(
-    values =>
-      Object.fromEntries(
-        headers.map(
-          (header, index) =>
-            [
-              header,
-              String(
-                values[index] ?? ""
-              ).trim()
-            ]
-        )
-      )
-  );
+  return rows.map(values => {
+    const object = {};
+
+    headers.forEach((header, index) => {
+      if (!header) return;
+
+      object[header] = String(
+        values[index] ?? ""
+      ).trim();
+    });
+
+    return object;
+  });
 }
