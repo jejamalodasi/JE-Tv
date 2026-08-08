@@ -1,21 +1,52 @@
-import { getSheet, sendJSON } from "./sheet.js";
+import {
+  getConfig
+} from "./sheet.js";
 
-export default async function handler(req, res) {
+import {
+  handleOptions,
+  sendError,
+  setCommonHeaders
+} from "./_utils.js";
 
-  if (req.method !== "GET") {
-    return sendJSON(res, 405, {
-      success: false,
-      error: "Method not allowed"
-    });
+function numberValue(
+  value,
+  fallback
+) {
+
+  const number =
+    Number(value);
+
+  return Number.isFinite(
+    number
+  )
+    ? number
+    : fallback;
+}
+
+export default async function handler(
+  req,
+  res
+) {
+
+  if (
+    handleOptions(
+      req,
+      res
+    )
+  ) {
+    return;
   }
 
   try {
 
-    const data = await getSheet("config");
+    const rows =
+      await getConfig();
 
     const config = {};
 
-    for (const row of data) {
+    for (
+      const row of rows
+    ) {
 
       const key =
         row.key ??
@@ -26,36 +57,48 @@ export default async function handler(req, res) {
       const value =
         row.value ??
         row.Value ??
-        row.val ??
-        row.Val;
+        row.setting ??
+        row.Setting;
 
       if (key) {
-        config[String(key).trim()] =
-          String(value ?? "").trim();
+
+        config[
+          String(key).trim()
+        ] = value;
       }
     }
 
-    return sendJSON(res, 200, {
-      success: true,
-      data,
-      config,
-      source: "google-sheets",
-      auto_sync: true,
-      refresh_interval_ms:
-        Number(
-          process.env.CLIENT_REFRESH_MS ||
-          config.CLIENT_REFRESH_MS ||
-          30000
-        )
-    });
+    config.refresh_interval_ms =
+      numberValue(
+        config.refresh_interval_ms ??
+        config.refreshIntervalMs,
+        30000
+      );
+
+    setCommonHeaders(
+      res,
+      {
+        cache: "no-store"
+      }
+    );
+
+    return res
+      .status(200)
+      .json({
+        success: true,
+        ...config
+      });
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      error
+    );
 
-    return sendJSON(res, 502, {
-      success: false,
-      error: "Unable to read Config Google Sheet"
-    });
+    return sendError(
+      res,
+      502,
+      "Unable to read config sheet"
+    );
   }
-}
+}আমি 
