@@ -1,22 +1,37 @@
-import { getLiveChannels, getSheetSourceInfo } from "./sheet.js";
-import { handleOptions, sendError, setCommonHeaders } from "./_utils.js";
+import {
+  getChannels,
+  sendJSON
+} from "./sheet.js";
 
 export default async function handler(req, res) {
-  if (handleOptions(req, res)) return;
-  if (req.method !== "GET") return sendError(res, 405, "Method not allowed");
+
+  if (req.method !== "GET") {
+    return sendJSON(res, 405, {
+      success: false,
+      error: "Method not allowed"
+    });
+  }
 
   try {
-    const channels = await getLiveChannels();
-    setCommonHeaders(res, { cache: "no-store" });
-    res.setHeader("X-Data-Source", "google-sheets");
-    return res.status(200).json({
+
+    const channels = await getChannels();
+
+    return sendJSON(res, 200, {
       success: true,
       count: channels.length,
       channels,
-      source: getSheetSourceInfo(),
-      synced_at: new Date().toISOString(),
+      source: "google-sheets",
+      synced_at: new Date().toISOString()
     });
+
   } catch (error) {
-    return sendError(res, 502, "Unable to read Google Sheet");
+
+    console.error("CHANNELS SHEET ERROR:", error);
+
+    return sendJSON(res, 502, {
+      success: false,
+      error: "Unable to read Channels Google Sheet",
+      details: error.message
+    });
   }
 }
