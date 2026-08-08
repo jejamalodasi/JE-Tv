@@ -1,53 +1,33 @@
-import crypto from "node:crypto";
-import { csvToObjects, getQuery, handleOptions, sendError, setCommonHeaders } from "./_utils.js";
-
-const CSV_URL =
-  process.env.PREMIUM_CSV_URL ||
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKvgLEkW-YX8pMUEWwZcCGqwfbX5ZuGrDAZ7xTs4oiOZY8Im0DMDXo1ahLnQE4NQ/pub?gid=1507668387&single=true&output=csv";
-
-function hash(value) {
-  return crypto.createHash("sha256").update(value).digest("hex");
-}
+import { getSheet, sendJSON } from "./sheet.js";
 
 export default async function handler(req, res) {
-  if (handleOptions(req, res)) return;
 
-  const supplied = getQuery(req, "password");
-  const expectedHash = process.env.PREMIUM_PASSWORD_HASH;
-
-  // Backward-compatible fallback for the existing Google Sheet flow.
-  // For production, set PREMIUM_PASSWORD_HASH and remove Password values from public sheets.
-  try {
-    const response = await fetch(CSV_URL);
-    if (!response.ok) throw new Error("Premium source unavailable");
-
-    const rows = csvToObjects(await response.text());
-
-    let access = [];
-    if (expectedHash) {
-      const suppliedHash = hash(supplied);
-      access = supplied && suppliedHash === expectedHash
-        ? rows
-        : [];
-    } else {
-      access = rows.filter((item) => item.Password === supplied);
-    }
-
-    setCommonHeaders(res, { cache: "no-store" });
-
-    if (!access.length) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      count: access.length,
-      channels: access,
+  if (req.method !== "GET") {
+    return sendJSON(res, 405, {
+      success: false,
+      error: "Method not allowed"
     });
-  } catch {
-    return sendError(res, 502, "Unable to load premium content");
+  }
+
+  try {
+
+    const data = await getSheet("premium");
+
+    return sendJSON(res, 200, {
+      success: true,
+      count: data.length,
+      data,
+      source: "google-sheets",
+      synced_at: new Date().toISOString()
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return sendJSON(res, 502, {
+      success: false,
+      error: "Unable to read Premium Google Sheet"
+    });
   }
 }
